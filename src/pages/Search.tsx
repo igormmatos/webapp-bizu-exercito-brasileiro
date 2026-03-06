@@ -85,20 +85,22 @@ export default function Search() {
             <Link 
               key={item.id} 
               to={`/item/${item.id}`}
-              className="flex items-start p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
+              className="flex items-start min-w-0 overflow-hidden p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
             >
-              <div className="mr-3 mt-1">
+              <div className="mr-3 mt-1 shrink-0">
                 {getIcon(item.type)}
               </div>
-              <div>
-                <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
-                <div className="flex items-center gap-2 mt-1">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-sans font-semibold text-mil-black line-clamp-2 leading-snug break-words">
+                  {item.title}
+                </h3>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
                   <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
                     {getItemTypeLabel(item.type)}
                   </span>
                 </div>
                 {item.description && (
-                  <p className="text-sm text-mil-black/70 line-clamp-2 mt-1">{item.description}</p>
+                  <p className="text-sm text-mil-black/70 line-clamp-2 break-words mt-1">{item.description}</p>
                 )}
               </div>
             </Link>
