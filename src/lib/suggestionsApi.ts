@@ -8,6 +8,9 @@ export async function submitSuggestion(suggestion: Suggestion): Promise<{ succes
   if (suggestion.message.length > 2000) {
     return { success: false, error: 'Mensagem excede 2000 caracteres' };
   }
+  if (!supabase) {
+    return { success: false, error: 'Serviço de sugestão indisponível: configure o Supabase.' };
+  }
 
   try {
     const { error } = await supabase

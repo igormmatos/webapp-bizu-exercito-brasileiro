@@ -9,20 +9,22 @@ const CACHE_KEYS = {
 };
 
 export async function fetchCatalog() {
-  try {
-    const [{ data: categories }, { data: items }] = await Promise.all([
-      supabase.from('categories').select('*').eq('published', true).order('sort_order'),
-      supabase.from('items').select('*').eq('published', true)
-    ]);
+  if (supabase) {
+    try {
+      const [{ data: categories }, { data: items }] = await Promise.all([
+        supabase.from('categories').select('*').eq('published', true).order('sort_order'),
+        supabase.from('items').select('*').eq('published', true)
+      ]);
 
-    if (categories && items) {
-      await db.set(CACHE_KEYS.CATEGORIES, categories);
-      await db.set(CACHE_KEYS.ITEMS, items);
-      await db.set(CACHE_KEYS.LAST_SYNC, Date.now());
-      return { categories, items };
+      if (categories && items) {
+        await db.set(CACHE_KEYS.CATEGORIES, categories);
+        await db.set(CACHE_KEYS.ITEMS, items);
+        await db.set(CACHE_KEYS.LAST_SYNC, Date.now());
+        return { categories, items };
+      }
+    } catch (error) {
+      console.error('Error fetching catalog from Supabase:', error);
     }
-  } catch (error) {
-    console.error('Error fetching catalog from Supabase:', error);
   }
 
   // Fallback to cache

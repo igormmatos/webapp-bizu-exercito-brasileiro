@@ -1,20 +1,45 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Bizu PWA
 
-# Run and deploy your AI Studio app
+App React + Vite com roteamento SPA (`BrowserRouter`) e integração com Supabase no frontend.
 
-This contains everything you need to run your app locally.
+## Pré-requisitos
 
-View your app in AI Studio: https://ai.studio/apps/5be514f4-23c8-4e4f-9c34-bd61e17a9873
+- Node.js 20+ (recomendado)
+- npm
 
-## Run Locally
+## Rodar localmente
 
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
+1. Instale as dependências:
    `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
+2. Crie o arquivo `.env.local` com base no exemplo:
+   `copy .env.example .env.local` (Windows)
+   `cp .env.example .env.local` (Linux/macOS)
+3. Preencha no `.env.local`:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Suba o projeto:
    `npm run dev`
+
+Sem as variáveis do Supabase, o app inicia em modo limitado (sem quebra de startup), usando fallback local quando disponível.
+
+## Build local e preview
+
+1. Gerar build:
+   `npm run build`
+2. Servir build localmente:
+   `npm run preview`
+3. Limpar artefatos de build:
+   `npm run clean`
+
+## Deploy na Vercel
+
+1. Importe este repositório na Vercel.
+2. Configure:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+3. Adicione as variáveis de ambiente na Vercel (Production/Preview):
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+4. Faça o deploy.
+
+O fallback de rotas SPA para `index.html` já está configurado em `vercel.json`, evitando erro 404 ao atualizar páginas internas.
