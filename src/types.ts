@@ -8,7 +8,7 @@ export type Category = {
 export type Item = {
   id: string;
   title: string;
-  type: 'pdf' | 'audio' | 'video' | 'text';
+  type: 'pdf' | 'audio' | 'video' | 'text' | 'image';
   category_id: string;
   published: boolean;
   letter?: boolean;

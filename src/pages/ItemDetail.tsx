@@ -6,6 +6,7 @@ import { Item } from '../types';
 import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import DOMPurify from 'dompurify';
+import { getItemTypeLabel } from '../lib/itemTypeLabel';
 
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
@@ -150,6 +151,10 @@ export default function ItemDetail() {
   const songMeta = getSongMeta(item);
   const hasFormattedText = Boolean(item.text_body && item.text_body.trim().length > 0);
   const sanitizedTextBody = hasFormattedText ? DOMPurify.sanitize(item.text_body as string) : '';
+  const isTextOrImageItem = item.type === 'text' || item.type === 'image';
+  const shouldRenderTopImage = isTextOrImageItem && Boolean(mediaUrl);
+  const shouldRenderTextImageBlock = isTextOrImageItem && (shouldRenderTopImage || hasFormattedText);
+  const textImageBlockPadding = hasFormattedText ? 'px-6 py-8' : 'px-6 pt-6 pb-4';
 
   return (
     <div className="p-4 space-y-6 pb-8 bg-mil-dark text-mil-light min-h-full">
@@ -231,7 +236,7 @@ export default function ItemDetail() {
         <>
           <div>
             <div className="inline-block px-2 py-1 bg-mil-medium text-mil-light text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
-              {item.type}
+              {getItemTypeLabel(item.type)}
             </div>
             <h1 className="text-2xl font-heading font-bold text-mil-light leading-tight mb-2">{item.title}</h1>
             {item.description && (
@@ -286,7 +291,40 @@ export default function ItemDetail() {
             </div>
           )}
 
-          {hasFormattedText && (
+          {shouldRenderTextImageBlock && (
+            <section className={`mx-auto w-full max-w-3xl rounded-2xl bg-mil-medium/70 ${textImageBlockPadding}`}>
+              {shouldRenderTopImage && (
+                <div className={`overflow-hidden rounded-xl border border-mil-medium/80 bg-mil-dark/30 ${hasFormattedText ? 'mb-6' : ''}`}>
+                  <img
+                    src={mediaUrl}
+                    alt={item.title}
+                    className="w-full h-auto max-h-[420px] object-cover object-center"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+
+              {hasFormattedText && (
+                <div
+                  className="
+                    text-mil-light/95
+                    [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
+                    [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
+                    [&_strong]:text-mil-light [&_strong]:font-bold
+                    [&_b]:text-mil-light [&_b]:font-bold
+                    [&_em]:italic [&_i]:italic
+                    [&_s]:line-through [&_strike]:line-through
+                    [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
+                    [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
+                    [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
+                  "
+                  dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
+                />
+              )}
+            </section>
+          )}
+
+          {!isTextOrImageItem && hasFormattedText && (
             <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
               <div
                 className="

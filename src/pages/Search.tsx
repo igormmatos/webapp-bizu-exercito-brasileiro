@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { searchItems } from '../lib/searchIndex';
 import { Item } from '../types';
-import { Search as SearchIcon, FileText, Video, Headphones, File } from 'lucide-react';
+import { Search as SearchIcon, FileText, Video, Headphones, Image as ImageIcon, File } from 'lucide-react';
 import AudioItemCard from '../components/AudioItemCard';
 import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
 import { getItemAudioUrl } from '../lib/audioUrl';
+import { getItemTypeLabel } from '../lib/itemTypeLabel';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +35,7 @@ export default function Search() {
       case 'pdf': return <FileText size={20} className="text-mil-red" />;
       case 'video': return <Video size={20} className="text-mil-blue" />;
       case 'audio': return <Headphones size={20} className="text-mil-gold" />;
+      case 'image': return <ImageIcon size={20} className="text-mil-gold" />;
       default: return <File size={20} className="text-mil-neutral" />;
     }
   };
@@ -92,7 +94,7 @@ export default function Search() {
                 <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
-                    {item.type}
+                    {getItemTypeLabel(item.type)}
                   </span>
                 </div>
                 {item.description && (
