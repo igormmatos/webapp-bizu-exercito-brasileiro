@@ -22,10 +22,20 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/storage\/v1\/object\/public\/.*/i,
+            urlPattern: ({url, request}) =>
+              /https:\/\/.*\.supabase\.co/i.test(url.origin) &&
+              url.pathname.includes('/storage/v1/object/public/') &&
+              request.destination === 'audio',
+            handler: 'NetworkOnly',
+          },
+          {
+            urlPattern: ({url, request}) =>
+              /https:\/\/.*\.supabase\.co/i.test(url.origin) &&
+              url.pathname.includes('/storage/v1/object/public/') &&
+              request.destination === 'image',
             handler: 'CacheFirst',
             options: {
-              cacheName: 'supabase-storage-cache',
+              cacheName: 'supabase-storage-image-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days

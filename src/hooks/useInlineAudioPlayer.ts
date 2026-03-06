@@ -1,5 +1,26 @@
 import { useEffect, useRef, useState } from 'react';
 
+function getMediaErrorDetails(audio: HTMLAudioElement, playError?: unknown): string {
+  if (audio.error) {
+    switch (audio.error.code) {
+      case 1:
+        return 'media aborted by user';
+      case 2:
+        return 'network error while fetching media';
+      case 3:
+        return 'media decode error';
+      case 4:
+        return 'media source not supported';
+      default:
+        return 'unknown media error';
+    }
+  }
+
+  if (playError instanceof Error) return playError.message;
+  if (typeof playError === 'string') return playError;
+  return 'unknown audio playback error';
+}
+
 export function useInlineAudioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -8,6 +29,9 @@ export function useInlineAudioPlayer() {
 
   useEffect(() => {
     const audio = new Audio();
+    audio.preload = 'metadata';
+    audio.setAttribute('playsinline', 'true');
+    audio.setAttribute('webkit-playsinline', 'true');
     audioRef.current = audio;
 
     const handlePlay = () => setIsPlaying(true);
@@ -19,6 +43,7 @@ export function useInlineAudioPlayer() {
       setIsPlaying(false);
     };
     const handleError = () => {
+      console.error('Audio element error:', getMediaErrorDetails(audio));
       setIsPlaying(false);
       setActiveId(null);
     };
@@ -64,14 +89,18 @@ export function useInlineAudioPlayer() {
       audio.pause();
       audio.src = sourceUrl;
       audio.loop = isLoopEnabled(id);
+      audio.load();
       setActiveId(id);
+    } else {
+      audio.loop = isLoopEnabled(id);
     }
 
     if (audio.paused) {
       try {
         await audio.play();
       } catch (error) {
-        console.error('Unable to play audio:', error);
+        const details = getMediaErrorDetails(audio, error);
+        console.error('Unable to play audio:', details, { id, sourceUrl });
         setIsPlaying(false);
         if (!isCurrentTrack) {
           setActiveId(null);
