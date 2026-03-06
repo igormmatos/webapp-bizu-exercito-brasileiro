@@ -3,6 +3,9 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { getItemsByCategory, getCategories } from '../lib/catalogApi';
 import { Item, Category } from '../types';
 import { ArrowLeft, FileText, Video, Headphones, File } from 'lucide-react';
+import AudioItemCard from '../components/AudioItemCard';
+import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
+import { getItemAudioUrl } from '../lib/audioUrl';
 
 export default function CategoryPage() {
   const { id } = useParams<{ id: string }>();
@@ -10,6 +13,7 @@ export default function CategoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
 
   useEffect(() => {
     if (id) {
@@ -65,28 +69,47 @@ export default function CategoryPage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {items.map(item => (
-              <Link 
-                key={item.id} 
-                to={`/item/${item.id}`}
-                className="flex items-start p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
-              >
-                <div className="mr-3 mt-1">
-                  {getIcon(item.type)}
-                </div>
-                <div>
-                  <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
-                      {item.type}
-                    </span>
+            {items.map(item => {
+              if (item.type === 'audio') {
+                const audioUrl = getItemAudioUrl(item);
+                const isItemPlaying = activeId === item.id && isPlaying;
+                return (
+                  <div key={item.id}>
+                    <AudioItemCard
+                      item={item}
+                      canPlay={Boolean(audioUrl)}
+                      isPlaying={isItemPlaying}
+                      isLooping={isLoopEnabled(item.id)}
+                      onTogglePlay={() => togglePlay(item.id, audioUrl)}
+                      onToggleLoop={() => toggleLoop(item.id)}
+                    />
                   </div>
-                  {item.description && (
-                    <p className="text-sm text-mil-black/70 line-clamp-2 mt-1">{item.description}</p>
-                  )}
-                </div>
-              </Link>
-            ))}
+                );
+              }
+
+              return (
+                <Link 
+                  key={item.id} 
+                  to={`/item/${item.id}`}
+                  className="flex items-start p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
+                >
+                  <div className="mr-3 mt-1">
+                    {getIcon(item.type)}
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
+                        {item.type}
+                      </span>
+                    </div>
+                    {item.description && (
+                      <p className="text-sm text-mil-black/70 line-clamp-2 mt-1">{item.description}</p>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

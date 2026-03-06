@@ -11,6 +11,7 @@ export type Item = {
   type: 'pdf' | 'audio' | 'video' | 'text';
   category_id: string;
   published: boolean;
+  letter?: boolean;
   storage_path?: string;
   text_body?: string;
   link?: string;

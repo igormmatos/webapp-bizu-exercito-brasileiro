@@ -3,12 +3,16 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { searchItems } from '../lib/searchIndex';
 import { Item } from '../types';
 import { Search as SearchIcon, FileText, Video, Headphones, File } from 'lucide-react';
+import AudioItemCard from '../components/AudioItemCard';
+import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
+import { getItemAudioUrl } from '../lib/audioUrl';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
+  const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
 
   useEffect(() => {
     if (query) {
@@ -57,28 +61,47 @@ export default function Search() {
         {!loading && query && results.length === 0 && (
           <p className="text-mil-neutral text-center">Nenhum resultado encontrado para "{query}".</p>
         )}
-        {!loading && results.map(item => (
-          <Link 
-            key={item.id} 
-            to={`/item/${item.id}`}
-            className="flex items-start p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
-          >
-            <div className="mr-3 mt-1">
-              {getIcon(item.type)}
-            </div>
-            <div>
-              <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
-                  {item.type}
-                </span>
+        {!loading && results.map(item => {
+          if (item.type === 'audio') {
+            const audioUrl = getItemAudioUrl(item);
+            const isItemPlaying = activeId === item.id && isPlaying;
+            return (
+              <div key={item.id}>
+                <AudioItemCard
+                  item={item}
+                  canPlay={Boolean(audioUrl)}
+                  isPlaying={isItemPlaying}
+                  isLooping={isLoopEnabled(item.id)}
+                  onTogglePlay={() => togglePlay(item.id, audioUrl)}
+                  onToggleLoop={() => toggleLoop(item.id)}
+                />
               </div>
-              {item.description && (
-                <p className="text-sm text-mil-black/70 line-clamp-2 mt-1">{item.description}</p>
-              )}
-            </div>
-          </Link>
-        ))}
+            );
+          }
+
+          return (
+            <Link 
+              key={item.id} 
+              to={`/item/${item.id}`}
+              className="flex items-start p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
+            >
+              <div className="mr-3 mt-1">
+                {getIcon(item.type)}
+              </div>
+              <div>
+                <h3 className="font-sans font-semibold text-mil-black">{item.title}</h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
+                    {item.type}
+                  </span>
+                </div>
+                {item.description && (
+                  <p className="text-sm text-mil-black/70 line-clamp-2 mt-1">{item.description}</p>
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </div>
     </div>
   );

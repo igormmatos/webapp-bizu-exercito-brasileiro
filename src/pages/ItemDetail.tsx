@@ -142,12 +142,14 @@ export default function ItemDetail() {
     );
   }
 
-  const isSongLayout = item.type === 'video';
+  const isSongLayout = item.type === 'video' && item.letter === true;
   const mediaUrl = item.storage_path ? getPublicUrl(item.storage_path) : item.link;
   const embedUrl = getYouTubeEmbedUrl(item.link);
   const lyricsStanzas = parseLyricsStanzas(item.text_body);
   const hasLyrics = lyricsStanzas.length > 0;
   const songMeta = getSongMeta(item);
+  const hasFormattedText = Boolean(item.text_body && item.text_body.trim().length > 0);
+  const sanitizedTextBody = hasFormattedText ? DOMPurify.sanitize(item.text_body as string) : '';
 
   return (
     <div className="p-4 space-y-6 pb-8 bg-mil-dark text-mil-light min-h-full">
@@ -237,17 +239,39 @@ export default function ItemDetail() {
             )}
           </div>
 
-          <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
-            {item.type === 'audio' && mediaUrl && (
+          {item.type === 'video' && (
+            <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
+              <div className="aspect-video w-full bg-mil-dark">
+                {embedUrl ? (
+                  <iframe
+                    src={embedUrl}
+                    title={item.title}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
+                    Link de vídeo indisponível.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {item.type === 'audio' && mediaUrl && (
+            <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
               <div className="p-6">
                 <audio controls className="w-full" src={mediaUrl}>
                   Seu navegador não suporta o elemento de áudio.
                 </audio>
               </div>
-            )}
+            </div>
+          )}
 
-            {item.type === 'pdf' && mediaUrl && (
-              <div className="p-6 flex flex-col items-center justify-center text-center border-b border-mil-neutral/40">
+          {item.type === 'pdf' && mediaUrl && (
+            <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
+              <div className="p-6 flex flex-col items-center justify-center text-center">
                 <FileText size={48} className="text-mil-red mb-4" />
                 <h3 className="font-medium text-mil-black mb-2">Documento PDF</h3>
                 <a
@@ -259,27 +283,28 @@ export default function ItemDetail() {
                   Abrir PDF <ExternalLink size={18} />
                 </a>
               </div>
-            )}
+            </div>
+          )}
 
-            {item.text_body && (
+          {hasFormattedText && (
+            <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
               <div
-                className="p-6 leading-relaxed [&_p]:mb-4 [&_strong]:text-mil-black"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.text_body) }}
+                className="
+                  text-mil-light/95
+                  [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
+                  [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
+                  [&_strong]:text-mil-light [&_strong]:font-bold
+                  [&_b]:text-mil-light [&_b]:font-bold
+                  [&_em]:italic [&_i]:italic
+                  [&_s]:line-through [&_strike]:line-through
+                  [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
+                  [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
+                  [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
+                "
+                dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
               />
-            )}
-
-            {item.type === 'video' && embedUrl && (
-              <div className="aspect-video w-full bg-mil-dark">
-                <iframe
-                  src={embedUrl}
-                  title={item.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-            )}
-          </div>
+            </section>
+          )}
         </>
       )}
 
