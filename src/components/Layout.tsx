@@ -1,14 +1,25 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { Home, Search, Heart, MessageSquare } from 'lucide-react';
+import { Home, Search, Heart, MessageSquare, RefreshCw } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { CatalogSyncState, getCatalogSyncState, subscribeCatalogSync } from '../lib/catalogApi';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
 export default function Layout() {
+  const [syncState, setSyncState] = useState<CatalogSyncState>(() => getCatalogSyncState());
+
+  useEffect(() => {
+    return subscribeCatalogSync(setSyncState);
+  }, []);
+
+  const syncMessage = syncState.isFirstSync
+    ? 'Sincronizando dados iniciais...'
+    : 'Sincronizando atualizacoes...';
+
   return (
     <div className="flex flex-col h-screen bg-mil-dark text-mil-light font-sans">
       <main className="flex-1 overflow-y-auto pb-16">
@@ -21,6 +32,15 @@ export default function Layout() {
         <NavItem to="/favorites" icon={<Heart size={24} />} label="Favoritos" />
         <NavItem to="/suggestion" icon={<MessageSquare size={24} />} label="Sugestão" />
       </nav>
+
+      {syncState.inProgress && (
+        <div className="fixed inset-0 z-[60] bg-mil-dark/85 flex items-center justify-center px-6">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <RefreshCw size={32} className="animate-spin text-mil-gold" />
+            <p className="text-mil-light text-base font-semibold">{syncMessage}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

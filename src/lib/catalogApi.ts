@@ -8,46 +8,122 @@ const CACHE_KEYS = {
   LAST_SYNC: 'catalog_last_sync'
 };
 
-export async function fetchCatalog() {
-  if (supabase) {
-    try {
-      const [{ data: categories }, { data: items }] = await Promise.all([
-        supabase.from('categories').select('*').eq('published', true).order('sort_order'),
-        supabase.from('items').select('*').eq('published', true)
-      ]);
+export type CatalogSyncOrigin = 'auto' | 'manual';
 
-      if (categories && items) {
-        await db.set(CACHE_KEYS.CATEGORIES, categories);
-        await db.set(CACHE_KEYS.ITEMS, items);
-        await db.set(CACHE_KEYS.LAST_SYNC, Date.now());
-        return { categories, items };
-      }
-    } catch (error) {
-      console.error('Error fetching catalog from Supabase:', error);
+export type CatalogSyncState = {
+  inProgress: boolean;
+  isFirstSync: boolean;
+  origin: CatalogSyncOrigin | null;
+};
+
+type FetchCatalogOptions = {
+  origin?: CatalogSyncOrigin;
+};
+
+type SyncListener = (state: CatalogSyncState) => void;
+
+let inFlightSync: Promise<{ categories: Category[]; items: Item[] }> | null = null;
+let syncState: CatalogSyncState = {
+  inProgress: false,
+  isFirstSync: false,
+  origin: null
+};
+const syncListeners = new Set<SyncListener>();
+
+function emitSyncState() {
+  syncListeners.forEach((listener) => listener(syncState));
+}
+
+function setSyncState(next: Partial<CatalogSyncState>) {
+  syncState = {
+    ...syncState,
+    ...next
+  };
+  emitSyncState();
+}
+
+export function getCatalogSyncState(): CatalogSyncState {
+  return syncState;
+}
+
+export function subscribeCatalogSync(listener: SyncListener): () => void {
+  syncListeners.add(listener);
+  listener(syncState);
+  return () => {
+    syncListeners.delete(listener);
+  };
+}
+
+export async function fetchCatalog(options?: FetchCatalogOptions) {
+  const origin = options?.origin || 'auto';
+
+  if (inFlightSync) {
+    if (origin === 'manual' && syncState.origin !== 'manual') {
+      setSyncState({ origin: 'manual' });
     }
+    return inFlightSync;
   }
 
-  // Fallback to cache
-  const cachedCategories = await db.get<Category[]>(CACHE_KEYS.CATEGORIES);
-  const cachedItems = await db.get<Item[]>(CACHE_KEYS.ITEMS);
+  inFlightSync = (async () => {
+    const hasSyncedBefore = Boolean(await db.get<number>(CACHE_KEYS.LAST_SYNC));
 
-  return {
-    categories: cachedCategories || [],
-    items: cachedItems || []
-  };
+    setSyncState({
+      inProgress: true,
+      isFirstSync: !hasSyncedBefore,
+      origin
+    });
+
+    if (supabase) {
+      try {
+        const [{ data: categories }, { data: items }] = await Promise.all([
+          supabase.from('categories').select('*').eq('published', true).order('sort_order'),
+          supabase.from('items').select('*').eq('published', true)
+        ]);
+
+        if (categories && items) {
+          await db.set(CACHE_KEYS.CATEGORIES, categories);
+          await db.set(CACHE_KEYS.ITEMS, items);
+          await db.set(CACHE_KEYS.LAST_SYNC, Date.now());
+          return { categories, items };
+        }
+      } catch (error) {
+        console.error('Error fetching catalog from Supabase:', error);
+      }
+    }
+
+    // Fallback to cache
+    const cachedCategories = await db.get<Category[]>(CACHE_KEYS.CATEGORIES);
+    const cachedItems = await db.get<Item[]>(CACHE_KEYS.ITEMS);
+
+    return {
+      categories: cachedCategories || [],
+      items: cachedItems || []
+    };
+  })();
+
+  try {
+    return await inFlightSync;
+  } finally {
+    inFlightSync = null;
+    setSyncState({
+      inProgress: false,
+      isFirstSync: false,
+      origin: null
+    });
+  }
 }
 
 export async function getCategories(): Promise<Category[]> {
   const cached = await db.get<Category[]>(CACHE_KEYS.CATEGORIES);
   if (cached && cached.length > 0) return cached;
-  const { categories } = await fetchCatalog();
+  const { categories } = await fetchCatalog({ origin: 'auto' });
   return categories;
 }
 
 export async function getItems(): Promise<Item[]> {
   const cached = await db.get<Item[]>(CACHE_KEYS.ITEMS);
   if (cached && cached.length > 0) return cached;
-  const { items } = await fetchCatalog();
+  const { items } = await fetchCatalog({ origin: 'auto' });
   return items;
 }
 

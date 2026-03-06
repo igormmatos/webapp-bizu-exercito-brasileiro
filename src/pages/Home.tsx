@@ -31,9 +31,12 @@ export default function Home() {
 
   const handleSync = async () => {
     setSyncing(true);
-    await fetchCatalog();
-    await loadData();
-    setSyncing(false);
+    try {
+      await fetchCatalog({ origin: 'manual' });
+      await loadData();
+    } finally {
+      setSyncing(false);
+    }
   };
 
   if (loading) {

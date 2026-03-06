@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getItemById } from '../lib/catalogApi';
 import { isFavorite, toggleFavorite } from '../lib/favoritesCache';
 import { Item } from '../types';
-import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText, Video, Headphones, File } from 'lucide-react';
+import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import DOMPurify from 'dompurify';
 
@@ -37,9 +37,95 @@ export default function ItemDetail() {
     setIsFav(newStatus);
   };
 
+  const decodeHtmlEntities = (value: string) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = value;
+    return textarea.value;
+  };
+
+  const parseLyricsStanzas = (rawText?: string) => {
+    if (!rawText) return [] as string[][];
+
+    const normalized = decodeHtmlEntities(
+      rawText
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        .replace(/<p[^>]*>/gi, '')
+        .replace(/<[^>]+>/g, ''),
+    );
+
+    const lines = normalized.split('\n').map((line) => line.trim());
+    const stanzas: string[][] = [];
+    let currentStanza: string[] = [];
+
+    for (const line of lines) {
+      if (!line) {
+        if (currentStanza.length > 0) {
+          stanzas.push(currentStanza);
+          currentStanza = [];
+        }
+        continue;
+      }
+      currentStanza.push(line);
+    }
+
+    if (currentStanza.length > 0) {
+      stanzas.push(currentStanza);
+    }
+
+    return stanzas;
+  };
+
+  const getSongMeta = (currentItem: Item) => {
+    const firstTag = currentItem.tags?.find((tag) => tag.trim().length > 0);
+    const mode = firstTag ? firstTag : currentItem.type;
+    return `CANCAO MILITAR · ${mode}`.toUpperCase();
+  };
+
+  const getYouTubeEmbedUrl = (url?: string) => {
+    if (!url) return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+
+    try {
+      const parsed = new URL(trimmed);
+      const host = parsed.hostname.toLowerCase();
+
+      if (host.includes('youtu.be')) {
+        const videoId = parsed.pathname.replace(/^\/+/, '');
+        return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmed;
+      }
+
+      if (host.includes('youtube.com')) {
+        if (parsed.pathname.startsWith('/embed/')) return trimmed;
+        if (parsed.pathname === '/watch') {
+          const videoId = parsed.searchParams.get('v');
+          return videoId ? `https://www.youtube.com/embed/${videoId}` : trimmed;
+        }
+      }
+    } catch {
+      // Fallback for non-standard URLs.
+    }
+
+    return trimmed.replace('watch?v=', 'embed/');
+  };
+
+  const normalizeStoragePath = (path: string) => {
+    return path.trim().replace(/^\/+/, '').replace(/^content\/+/i, '');
+  };
+
   const getPublicUrl = (path?: string) => {
     if (!path) return '';
-    const { data } = supabase.storage.from('media').getPublicUrl(path);
+    const cleanedPath = path.trim();
+    if (/^https?:\/\//i.test(cleanedPath)) return cleanedPath;
+    if (!supabase) return '';
+
+    const normalizedPath = normalizeStoragePath(cleanedPath);
+    if (!normalizedPath) return '';
+
+    const { data } = supabase.storage.from('content').getPublicUrl(normalizedPath);
     return data.publicUrl;
   };
 
@@ -50,88 +136,157 @@ export default function ItemDetail() {
   if (!item) {
     return (
       <div className="p-4 text-center py-12">
-        <h2 className="text-xl font-bold text-slate-900 mb-2">Item não encontrado</h2>
-        <button onClick={() => navigate(-1)} className="text-indigo-600 font-medium">Voltar</button>
+        <h2 className="text-xl font-bold text-mil-light mb-2">Item não encontrado</h2>
+        <button onClick={() => navigate(-1)} className="text-mil-gold font-medium">Voltar</button>
       </div>
     );
   }
 
+  const isSongLayout = item.type === 'video';
   const mediaUrl = item.storage_path ? getPublicUrl(item.storage_path) : item.link;
+  const embedUrl = getYouTubeEmbedUrl(item.link);
+  const lyricsStanzas = parseLyricsStanzas(item.text_body);
+  const hasLyrics = lyricsStanzas.length > 0;
+  const songMeta = getSongMeta(item);
 
   return (
-    <div className="p-4 space-y-6 pb-8">
+    <div className="p-4 space-y-6 pb-8 bg-mil-dark text-mil-light min-h-full">
       <div className="flex items-center justify-between mb-2">
         <button 
           onClick={() => navigate(-1)}
-          className="p-2 -ml-2 rounded-full hover:bg-slate-200 text-slate-700 transition"
+          className="p-2 -ml-2 rounded-full hover:bg-mil-medium text-mil-light transition"
           aria-label="Voltar"
         >
           <ArrowLeft size={24} />
         </button>
         <button 
           onClick={handleToggleFavorite}
-          className="p-2 -mr-2 rounded-full hover:bg-slate-200 transition"
+          className="p-2 -mr-2 rounded-full hover:bg-mil-medium transition"
           aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
         >
-          <Heart size={24} className={isFav ? "text-rose-500" : "text-slate-400"} fill={isFav ? "currentColor" : "none"} />
+          <Heart size={24} className={isFav ? "text-mil-red" : "text-mil-neutral"} fill={isFav ? "currentColor" : "none"} />
         </button>
       </div>
 
-      <div>
-        <div className="inline-block px-2 py-1 bg-indigo-100 text-indigo-800 text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
-          {item.type}
+      {isSongLayout ? (
+        <div className="space-y-6">
+          <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
+            <div className="aspect-video w-full bg-mil-dark">
+              {embedUrl ? (
+                <iframe
+                  src={embedUrl}
+                  title={item.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
+                  Link de vídeo indisponível.
+                </div>
+              )}
+            </div>
+          </div>
+
+          <section className="mx-auto w-full max-w-3xl rounded-2xl border border-mil-medium/80 bg-gradient-to-b from-mil-medium/60 via-mil-dark to-mil-dark px-6 py-8">
+            <header className="text-center mb-8">
+              <h1 className="text-3xl font-heading font-bold italic text-mil-light leading-tight">
+                {item.title}
+              </h1>
+              <p className="mt-3 text-[11px] tracking-[0.2em] uppercase text-mil-neutral font-semibold">
+                {songMeta}
+              </p>
+              {item.description && (
+                <p className="mt-4 text-sm text-mil-neutral max-w-xl mx-auto">
+                  {item.description}
+                </p>
+              )}
+            </header>
+
+            {hasLyrics ? (
+              <div className="space-y-8">
+                {lyricsStanzas.map((stanza, stanzaIndex) => (
+                  <div key={stanzaIndex} className="space-y-2 text-center">
+                    {stanza.map((line, lineIndex) => (
+                      <p
+                        key={`${stanzaIndex}-${lineIndex}`}
+                        className="font-sans italic font-medium text-base md:text-lg leading-relaxed text-mil-light/95"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center italic text-mil-neutral">
+                Letra nao disponivel.
+              </p>
+            )}
+          </section>
         </div>
-        <h1 className="text-2xl font-bold text-slate-900 leading-tight mb-2">{item.title}</h1>
-        {item.description && (
-          <p className="text-slate-600 text-base">{item.description}</p>
-        )}
-      </div>
-
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        {item.type === 'video' && item.link && (
-          <div className="aspect-video w-full bg-slate-900">
-            <iframe 
-              src={item.link.replace('watch?v=', 'embed/')} 
-              title={item.title}
-              className="w-full h-full border-0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-              allowFullScreen
-            ></iframe>
+      ) : (
+        <>
+          <div>
+            <div className="inline-block px-2 py-1 bg-mil-medium text-mil-light text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
+              {item.type}
+            </div>
+            <h1 className="text-2xl font-heading font-bold text-mil-light leading-tight mb-2">{item.title}</h1>
+            {item.description && (
+              <p className="text-mil-neutral text-base">{item.description}</p>
+            )}
           </div>
-        )}
 
-        {item.type === 'audio' && mediaUrl && (
-          <div className="p-6 bg-slate-50">
-            <audio controls className="w-full" src={mediaUrl}>
-              Seu navegador não suporta o elemento de áudio.
-            </audio>
+          <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
+            {item.type === 'audio' && mediaUrl && (
+              <div className="p-6">
+                <audio controls className="w-full" src={mediaUrl}>
+                  Seu navegador não suporta o elemento de áudio.
+                </audio>
+              </div>
+            )}
+
+            {item.type === 'pdf' && mediaUrl && (
+              <div className="p-6 flex flex-col items-center justify-center text-center border-b border-mil-neutral/40">
+                <FileText size={48} className="text-mil-red mb-4" />
+                <h3 className="font-medium text-mil-black mb-2">Documento PDF</h3>
+                <a
+                  href={mediaUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-mil-medium text-mil-light px-5 py-2.5 rounded-xl font-medium hover:bg-mil-dark transition"
+                >
+                  Abrir PDF <ExternalLink size={18} />
+                </a>
+              </div>
+            )}
+
+            {item.text_body && (
+              <div
+                className="p-6 leading-relaxed [&_p]:mb-4 [&_strong]:text-mil-black"
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.text_body) }}
+              />
+            )}
+
+            {item.type === 'video' && embedUrl && (
+              <div className="aspect-video w-full bg-mil-dark">
+                <iframe
+                  src={embedUrl}
+                  title={item.title}
+                  className="w-full h-full border-0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                ></iframe>
+              </div>
+            )}
           </div>
-        )}
+        </>
+      )}
 
-        {item.type === 'pdf' && mediaUrl && (
-          <div className="p-6 flex flex-col items-center justify-center text-center bg-slate-50 border-b border-slate-100">
-            <FileText size={48} className="text-red-500 mb-4" />
-            <h3 className="font-medium text-slate-900 mb-2">Documento PDF</h3>
-            <a 
-              href={mediaUrl} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-medium hover:bg-indigo-700 transition"
-            >
-              Abrir PDF <ExternalLink size={18} />
-            </a>
-          </div>
-        )}
-
-        {item.text_body && (
-          <div className="p-6 prose prose-slate prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(item.text_body) }} />
-        )}
-      </div>
-
-      <div className="pt-6 border-t border-slate-200">
-        <Link 
+      <div className="pt-6 border-t border-mil-medium">
+        <Link
           to={`/suggestion?prefillMessage=Reportando item: ${item.title} (ID: ${item.id})&prefillCategory=Reporte`}
-          className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-red-50 text-red-700 rounded-xl font-medium hover:bg-red-100 transition"
+          className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-mil-red/10 text-mil-red rounded-xl font-medium hover:bg-mil-red/20 transition"
         >
           <AlertTriangle size={20} />
           Reportar problema com este conteúdo
