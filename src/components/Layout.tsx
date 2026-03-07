@@ -4,6 +4,7 @@ import { Home, Search, Heart, MessageSquare, RefreshCw } from 'lucide-react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { CatalogSyncState, getCatalogSyncState, subscribeCatalogSync } from '../lib/catalogApi';
+import PwaInstallPrompt from './PwaInstallPrompt';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -32,6 +33,8 @@ export default function Layout() {
         <NavItem to="/favorites" icon={<Heart size={24} />} label="Favoritos" />
         <NavItem to="/suggestion" icon={<MessageSquare size={24} />} label="Sugestão" />
       </nav>
+
+      <PwaInstallPrompt blocked={syncState.inProgress} />
 
       {syncState.inProgress && (
         <div className="fixed inset-0 z-[60] bg-mil-dark/85 flex items-center justify-center px-6">

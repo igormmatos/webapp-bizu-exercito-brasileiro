@@ -11,12 +11,19 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'Bizu PWA',
-        short_name: 'Bizu',
-        description: 'Consumo rápido de conteúdo operacional, offline-first.',
+        name: 'Manual de Bolso',
+        short_name: 'Manual de Bolso',
+        description: 'Toques de corneta, manuais, bizus e canções na palma da mão',
         theme_color: '#ffffff',
         display: 'standalone',
-        background_color: '#ffffff'
+        background_color: '#ffffff',
+        icons: [
+          {
+            src: 'https://obsnofjxkewjjtxstkpa.supabase.co/storage/v1/object/public/content/src/icon_white.png',
+            sizes: '512x512',
+            type: 'image/png',
+          }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],

@@ -1,4 +1,4 @@
-# Bizu PWA
+# Manual de Bolso
 
 App React + Vite com roteamento SPA (`BrowserRouter`) e integração com Supabase no frontend.
 
