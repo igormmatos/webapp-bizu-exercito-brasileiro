@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getFavorites } from '../lib/favoritesCache';
+import { getFavorites, toggleFavorite } from '../lib/favoritesCache';
 import { getItemById } from '../lib/catalogApi';
 import { Item } from '../types';
 import { Heart, FileText, Video, Headphones, Image as ImageIcon, File } from 'lucide-react';
@@ -28,6 +28,13 @@ export default function Favorites() {
     }
     setFavorites(items);
     setLoading(false);
+  };
+
+  const handleToggleFavorite = async (itemId: string) => {
+    const newStatus = await toggleFavorite(itemId);
+    if (!newStatus) {
+      setFavorites((currentValue) => currentValue.filter((favoriteItem) => favoriteItem.id !== itemId));
+    }
   };
 
   const getIcon = (type: string) => {
@@ -72,8 +79,10 @@ export default function Favorites() {
                       canPlay={Boolean(audioUrl)}
                       isPlaying={isItemPlaying}
                       isLooping={isLoopEnabled(item.id)}
+                      isFavorite={true}
                       onTogglePlay={() => togglePlay(item.id, audioUrl)}
                       onToggleLoop={() => toggleLoop(item.id)}
+                      onToggleFavorite={() => handleToggleFavorite(item.id)}
                     />
                   </div>
                 );

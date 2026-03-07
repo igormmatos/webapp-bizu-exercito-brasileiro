@@ -1,5 +1,5 @@
-import type { KeyboardEvent } from 'react';
-import { Headphones, Pause, Play, Repeat } from 'lucide-react';
+import { useState, type KeyboardEvent } from 'react';
+import { Headphones, Heart, Pause, Play, Repeat } from 'lucide-react';
 import { Item } from '../types';
 
 type AudioItemCardProps = {
@@ -7,8 +7,10 @@ type AudioItemCardProps = {
   canPlay: boolean;
   isPlaying: boolean;
   isLooping: boolean;
+  isFavorite: boolean;
   onTogglePlay: () => void;
   onToggleLoop: () => void;
+  onToggleFavorite: () => void;
 };
 
 export default function AudioItemCard({
@@ -16,9 +18,15 @@ export default function AudioItemCard({
   canPlay,
   isPlaying,
   isLooping,
+  isFavorite,
   onTogglePlay,
   onToggleLoop,
+  onToggleFavorite,
 }: AudioItemCardProps) {
+  const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  const hasDescription = Boolean(item.description && item.description.trim().length > 0);
+  const shouldShowTitleToggle = item.title.trim().length > 70;
+
   const handleCardClick = () => {
     if (!canPlay) return;
     onTogglePlay();
@@ -47,19 +55,56 @@ export default function AudioItemCard({
             <Headphones size={20} className="text-mil-gold" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-sans font-semibold text-mil-black truncate">{item.title}</h3>
+            <h3
+              className={`font-sans font-semibold text-mil-black break-words ${
+                isTitleExpanded ? 'whitespace-normal' : 'line-clamp-2 leading-snug'
+              }`}
+            >
+              {item.title}
+            </h3>
+            {shouldShowTitleToggle && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setIsTitleExpanded((currentValue) => !currentValue);
+                }}
+                className="mt-1 text-[11px] font-semibold text-mil-blue hover:text-mil-dark transition"
+                aria-label={isTitleExpanded ? 'Mostrar menos título' : 'Mostrar título completo'}
+              >
+                {isTitleExpanded ? 'Ver menos' : 'Ver mais'}
+              </button>
+            )}
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
                 AUDIO
               </span>
             </div>
-            {item.description && (
-              <p className="text-xs text-mil-black/70 line-clamp-1 mt-1">{item.description}</p>
+            {hasDescription && (
+              <p className="text-xs text-mil-black/70 line-clamp-1 break-words mt-1">
+                {item.description}
+              </p>
             )}
           </div>
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggleFavorite();
+            }}
+            className={`h-9 w-9 rounded-full flex items-center justify-center transition ${
+              isFavorite
+                ? 'text-mil-red bg-mil-red/10'
+                : 'text-mil-neutral hover:text-mil-black hover:bg-mil-dark/5'
+            }`}
+            aria-label={isFavorite ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+          >
+            <Heart size={17} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+
           <button
             type="button"
             onClick={(event) => {

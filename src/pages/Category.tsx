@@ -7,6 +7,7 @@ import AudioItemCard from '../components/AudioItemCard';
 import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
 import { getItemAudioUrl } from '../lib/audioUrl';
 import { getItemTypeLabel } from '../lib/itemTypeLabel';
+import { getFavorites, toggleFavorite } from '../lib/favoritesCache';
 
 export default function CategoryPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export default function CategoryPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
 
   useEffect(() => {
@@ -29,8 +31,23 @@ export default function CategoryPage() {
     setCategory(cat || null);
 
     const catItems = await getItemsByCategory(categoryId);
+    const favoriteList = await getFavorites();
     setItems(catItems);
+    setFavoriteIds(new Set(favoriteList));
     setLoading(false);
+  };
+
+  const handleToggleFavorite = async (itemId: string) => {
+    const newStatus = await toggleFavorite(itemId);
+    setFavoriteIds((currentValue) => {
+      const nextValue = new Set(currentValue);
+      if (newStatus) {
+        nextValue.add(itemId);
+      } else {
+        nextValue.delete(itemId);
+      }
+      return nextValue;
+    });
   };
 
   const getIcon = (type: string) => {
@@ -82,8 +99,10 @@ export default function CategoryPage() {
                       canPlay={Boolean(audioUrl)}
                       isPlaying={isItemPlaying}
                       isLooping={isLoopEnabled(item.id)}
+                      isFavorite={favoriteIds.has(item.id)}
                       onTogglePlay={() => togglePlay(item.id, audioUrl)}
                       onToggleLoop={() => toggleLoop(item.id)}
+                      onToggleFavorite={() => handleToggleFavorite(item.id)}
                     />
                   </div>
                 );

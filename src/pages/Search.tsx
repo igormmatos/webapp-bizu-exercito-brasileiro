@@ -7,13 +7,21 @@ import AudioItemCard from '../components/AudioItemCard';
 import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
 import { getItemAudioUrl } from '../lib/audioUrl';
 import { getItemTypeLabel } from '../lib/itemTypeLabel';
+import { getFavorites, toggleFavorite } from '../lib/favoritesCache';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
+
+  useEffect(() => {
+    getFavorites().then((favoriteList) => {
+      setFavoriteIds(new Set(favoriteList));
+    });
+  }, []);
 
   useEffect(() => {
     if (query) {
@@ -28,6 +36,19 @@ export default function Search() {
     const res = await searchItems(q);
     setResults(res);
     setLoading(false);
+  };
+
+  const handleToggleFavorite = async (itemId: string) => {
+    const newStatus = await toggleFavorite(itemId);
+    setFavoriteIds((currentValue) => {
+      const nextValue = new Set(currentValue);
+      if (newStatus) {
+        nextValue.add(itemId);
+      } else {
+        nextValue.delete(itemId);
+      }
+      return nextValue;
+    });
   };
 
   const getIcon = (type: string) => {
@@ -74,8 +95,10 @@ export default function Search() {
                   canPlay={Boolean(audioUrl)}
                   isPlaying={isItemPlaying}
                   isLooping={isLoopEnabled(item.id)}
+                  isFavorite={favoriteIds.has(item.id)}
                   onTogglePlay={() => togglePlay(item.id, audioUrl)}
                   onToggleLoop={() => toggleLoop(item.id)}
+                  onToggleFavorite={() => handleToggleFavorite(item.id)}
                 />
               </div>
             );
