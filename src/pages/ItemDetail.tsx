@@ -176,25 +176,32 @@ export default function ItemDetail() {
   const textImageBlockPadding = hasFormattedText ? 'px-6 py-8' : 'px-6 pt-6 pb-4';
 
   return (
-    <div className="p-4 space-y-6 pb-8 bg-mil-dark text-mil-light min-h-full">
-      <div className="flex items-center justify-between mb-2">
-        <button 
-          onClick={() => navigate(-1)}
-          className="p-2 -ml-2 rounded-full hover:bg-mil-medium text-mil-light transition"
-          aria-label="Voltar"
-        >
-          <ArrowLeft size={24} />
-        </button>
-        <button 
-          onClick={handleToggleFavorite}
-          className="p-2 -mr-2 rounded-full hover:bg-mil-medium transition"
-          aria-label={isFav ? "Remover dos favoritos" : "Adicionar aos favoritos"}
-        >
-          <Heart size={24} className={isFav ? "text-mil-red" : "text-mil-neutral"} fill={isFav ? "currentColor" : "none"} />
-        </button>
-      </div>
+    <div className="flex flex-col min-h-full bg-mil-dark text-mil-light">
+      <header className="bg-mil-dark px-4 py-4 sticky top-0 z-10 border-b border-mil-medium">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => navigate(-1)}
+            className="p-2 -ml-2 rounded-full hover:bg-mil-medium text-mil-light transition"
+            aria-label="Voltar"
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <button
+            onClick={handleToggleFavorite}
+            className="p-2 -mr-2 rounded-full hover:bg-mil-medium transition"
+            aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+          >
+            <Heart
+              size={24}
+              className={isFav ? 'text-mil-red' : 'text-mil-neutral'}
+              fill={isFav ? 'currentColor' : 'none'}
+            />
+          </button>
+        </div>
+      </header>
 
-      {isSongLayout ? (
+      <div className="p-4 space-y-6 pb-8">
+        {isSongLayout ? (
         <div className="space-y-6">
           <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
             <div className="aspect-video w-full bg-mil-dark">
@@ -251,7 +258,7 @@ export default function ItemDetail() {
             )}
           </section>
         </div>
-      ) : (
+        ) : (
         <>
           <div>
             <div className="inline-block px-2 py-1 bg-mil-medium text-mil-light text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
@@ -401,17 +408,18 @@ export default function ItemDetail() {
               )}
             </>
           )}
-        </>
-      )}
+          </>
+        )}
 
-      <div className="pt-6 border-t border-mil-medium">
-        <Link
-          to={`/suggestion?prefillMessage=Reportando item: ${item.title} (ID: ${item.id})&prefillCategory=Reporte`}
-          className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-mil-red/10 text-mil-red rounded-xl font-medium hover:bg-mil-red/20 transition"
-        >
-          <AlertTriangle size={20} />
-          Reportar problema com este conteúdo
-        </Link>
+        <div className="pt-6 border-t border-mil-medium">
+          <Link
+            to={`/suggestion?prefillMessage=Reportando item: ${item.title} (ID: ${item.id})&prefillCategory=Reporte`}
+            className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-mil-red/10 text-mil-red rounded-xl font-medium hover:bg-mil-red/20 transition"
+          >
+            <AlertTriangle size={20} />
+            Reportar problema com este conteúdo
+          </Link>
+        </div>
       </div>
     </div>
   );
