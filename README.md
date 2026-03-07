@@ -43,3 +43,29 @@ Sem as variáveis do Supabase, o app inicia em modo limitado (sem quebra de star
 4. Faça o deploy.
 
 O fallback de rotas SPA para `index.html` já está configurado em `vercel.json`, evitando erro 404 ao atualizar páginas internas.
+
+## Release 1.0
+
+Checklist mínimo para fechar release estável:
+
+1. Banco de dados (Supabase):
+   - Execute `database/014_items_pdf_text_body_optional.sql` no SQL Editor.
+   - Valide os checks ativos com a query de diagnóstico no topo da migration.
+2. Qualidade:
+   - `npm run lint`
+   - `npm run clean`
+   - `npm run build`
+3. Deploy:
+   - Faça deploy de preview na Vercel e rode smoke test manual.
+   - Promova para produção após validação de rotas, áudio, favoritos, busca, detalhe e sugestões.
+4. Versionamento:
+   - Garanta `package.json` em `1.0.0`.
+   - Atualize release notes em `CHANGELOG.md`.
+   - Crie tag git `v1.0.0`.
+
+Rollback básico:
+
+- Se houver regressão em produção:
+  1. Reverter para o deployment anterior na Vercel.
+  2. Reverter o commit/tag localmente.
+  3. Corrigir e publicar patch (`v1.0.1`).

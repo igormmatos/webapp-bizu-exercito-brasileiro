@@ -4,7 +4,12 @@ import path from 'path';
 import {defineConfig} from 'vite';
 import {VitePWA} from 'vite-plugin-pwa';
 
+const appVersion = process.env.npm_package_version || '1.0.0';
+
 export default defineConfig({
+  define: {
+    __APP_VERSION__: JSON.stringify(appVersion),
+  },
   plugins: [
     react(),
     tailwindcss(),
@@ -19,10 +24,21 @@ export default defineConfig({
         background_color: '#ffffff',
         icons: [
           {
-            src: 'https://obsnofjxkewjjtxstkpa.supabase.co/storage/v1/object/public/content/src/icon_white.png',
+            src: '/icons/icon-192.png',
+            sizes: '192x192',
+            type: 'image/png',
+          },
+          {
+            src: '/icons/icon-512.png',
             sizes: '512x512',
             type: 'image/png',
-          }
+          },
+          {
+            src: '/icons/icon-512-maskable.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable any',
+          },
         ]
       },
       workbox: {
@@ -64,5 +80,16 @@ export default defineConfig({
   server: {
     // Optional toggle used in constrained environments where HMR must be off.
     hmr: process.env.DISABLE_HMR !== 'true',
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          supabase: ['@supabase/supabase-js'],
+          vendor: ['lucide-react', 'dompurify', 'idb-keyval'],
+        },
+      },
+    },
   },
 });

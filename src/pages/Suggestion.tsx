@@ -27,7 +27,7 @@ export default function Suggestion() {
       message,
       category: category || undefined,
       contact: contact || undefined,
-      app_version: '1.0.0 (PWA)',
+      app_version: `${__APP_VERSION__} (PWA)`,
       device: navigator.userAgent
     });
 
