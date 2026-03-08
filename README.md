@@ -43,6 +43,9 @@ Sem as variáveis do Supabase, o app inicia em modo limitado (sem quebra de star
 3. Adicione as variáveis de ambiente na Vercel (Production/Preview):
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - Opcional (gate com AdSense):
+     - `VITE_ADSENSE_CLIENT`
+     - `VITE_ADSENSE_GATE_SLOT`
 4. Faça o deploy.
 
 O fallback de rotas SPA para `index.html` já está configurado em `vercel.json`, evitando erro 404 ao atualizar páginas internas.

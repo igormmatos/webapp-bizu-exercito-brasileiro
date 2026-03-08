@@ -136,8 +136,16 @@ export default function GateProvider({ children }: GateProviderProps) {
       return;
     }
 
-    const existingScript = document.querySelector<HTMLScriptElement>('#adsense-gate-script');
+    const existingScript =
+      document.querySelector<HTMLScriptElement>('#adsense-gate-script') ||
+      document.querySelector<HTMLScriptElement>(
+        'script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]',
+      );
+
     if (existingScript) {
+      if (!existingScript.id) {
+        existingScript.id = 'adsense-gate-script';
+      }
       setAdSenseStatus('ready');
       return;
     }
