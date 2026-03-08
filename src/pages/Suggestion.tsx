@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { submitSuggestion } from '../lib/suggestionsApi';
-import { MessageSquare, Send, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { MessageSquare, Send } from 'lucide-react';
+import { useNotice } from '../components/NoticeProvider';
 
 export default function Suggestion() {
   const [searchParams] = useSearchParams();
@@ -13,15 +14,13 @@ export default function Suggestion() {
   const [contact, setContact] = useState('');
   
   const [loading, setLoading] = useState(false);
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const [errorMsg, setErrorMsg] = useState('');
+  const { showNotice } = useNotice();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
     
     setLoading(true);
-    setStatus('idle');
     
     const result = await submitSuggestion({
       message,
@@ -32,13 +31,18 @@ export default function Suggestion() {
     });
 
     if (result.success) {
-      setStatus('success');
       setMessage('');
       setCategory('');
       setContact('');
+      showNotice({
+        variant: 'success',
+        message: 'Sugestão enviada! Obrigado pela sua colaboração.',
+      });
     } else {
-      setStatus('error');
-      setErrorMsg(result.error || 'Erro desconhecido');
+      showNotice({
+        variant: 'error',
+        message: result.error || 'Erro ao enviar sugestão.',
+      });
     }
     setLoading(false);
   };
@@ -55,26 +59,6 @@ export default function Suggestion() {
         <p className="text-mil-light/80 text-sm">
           Envie sugestões, correções ou reporte problemas anonimamente.
         </p>
-
-        {status === 'success' && (
-          <div className="bg-mil-light text-mil-black p-4 rounded-lg flex items-start gap-3 border-l-4 border-mil-gold">
-            <CheckCircle2 className="text-mil-gold shrink-0 mt-0.5" size={20} />
-            <div>
-              <h3 className="font-sans font-semibold">Sugestão enviada!</h3>
-              <p className="text-sm mt-1 opacity-90">Obrigado pela sua colaboração. Analisaremos em breve.</p>
-            </div>
-          </div>
-        )}
-
-        {status === 'error' && (
-          <div className="bg-mil-light text-mil-black p-4 rounded-lg flex items-start gap-3 border-l-4 border-mil-red">
-            <AlertCircle className="text-mil-red shrink-0 mt-0.5" size={20} />
-            <div>
-              <h3 className="font-sans font-semibold">Erro ao enviar</h3>
-              <p className="text-sm mt-1 opacity-90">{errorMsg}</p>
-            </div>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

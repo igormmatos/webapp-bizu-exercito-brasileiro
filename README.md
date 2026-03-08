@@ -17,6 +17,9 @@ App React + Vite com roteamento SPA (`BrowserRouter`) e integração com Supabas
 3. Preencha no `.env.local`:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - Opcional (gate com AdSense):
+     - `VITE_ADSENSE_CLIENT`
+     - `VITE_ADSENSE_GATE_SLOT`
 4. Suba o projeto:
    `npm run dev`
 

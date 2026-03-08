@@ -19,6 +19,33 @@ export type Item = {
   description?: string;
 };
 
+export type GateStatus = {
+  categoryId: string;
+  unlocked: boolean;
+  expiresAt: number;
+};
+
+export type FavoriteActionResult =
+  | { status: 'added'; count: number; categoryId: string }
+  | { status: 'removed'; count: number; categoryId: string }
+  | { status: 'limit_reached'; count: number; categoryId: string; limit: number };
+
+export type MonetizationEvent =
+  | 'gate_opened'
+  | 'countdown_start'
+  | 'countdown_end'
+  | 'gate_unlocked'
+  | 'gate_expired'
+  | 'favoritos_limit_reached';
+
+export type NoticeVariant = 'success' | 'error' | 'warning';
+
+export type NoticePayload = {
+  message: string;
+  variant: NoticeVariant;
+  durationMs?: number;
+};
+
 export type Suggestion = {
   id?: string;
   message: string;

@@ -7,13 +7,20 @@ import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText } from 'lucide-
 import { supabase } from '../lib/supabase';
 import DOMPurify from 'dompurify';
 import { getItemTypeLabel } from '../lib/itemTypeLabel';
+import { trackMonetizationEvent } from '../lib/monetization';
+import { useGate } from '../components/GateProvider';
+import { useNotice } from '../components/NoticeProvider';
 
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { ensureCategoryUnlocked } = useGate();
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
+  const [isContentUnlocked, setIsContentUnlocked] = useState(false);
+  const [isGateChecking, setIsGateChecking] = useState(false);
+  const { showNotice } = useNotice();
 
   useEffect(() => {
     if (id) {
@@ -21,8 +28,33 @@ export default function ItemDetail() {
     }
   }, [id]);
 
+  useEffect(() => {
+    if (!item) {
+      setIsContentUnlocked(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const validateGate = async () => {
+      setIsGateChecking(true);
+      const isUnlocked = await ensureCategoryUnlocked(item.category_id, 'detail');
+      if (!isCancelled) {
+        setIsContentUnlocked(isUnlocked);
+        setIsGateChecking(false);
+      }
+    };
+
+    validateGate();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [ensureCategoryUnlocked, item?.category_id, item?.id]);
+
   const loadData = async (itemId: string) => {
     setLoading(true);
+    setIsContentUnlocked(false);
     const data = await getItemById(itemId);
     setItem(data || null);
     if (data) {
@@ -33,9 +65,30 @@ export default function ItemDetail() {
   };
 
   const handleToggleFavorite = async () => {
-    if (!id) return;
-    const newStatus = await toggleFavorite(id);
-    setIsFav(newStatus);
+    if (!id || !item) return;
+    const result = await toggleFavorite(id, item.category_id);
+
+    if (result.status === 'limit_reached') {
+      showNotice({
+        variant: 'warning',
+        message: '⚠️ Você atingiu o limite de 3 favoritos por categoria — mantenha apenas os essenciais.',
+      });
+      trackMonetizationEvent('favoritos_limit_reached', {
+        itemId: item.id,
+        categoryId: item.category_id,
+      });
+      return;
+    }
+
+    setIsFav(result.status === 'added');
+  };
+
+  const handleUnlockContent = async () => {
+    if (!item) return;
+    setIsGateChecking(true);
+    const isUnlocked = await ensureCategoryUnlocked(item.category_id, 'detail');
+    setIsContentUnlocked(isUnlocked);
+    setIsGateChecking(false);
   };
 
   const decodeHtmlEntities = (value: string) => {
@@ -174,6 +227,215 @@ export default function ItemDetail() {
   const shouldRenderTopImage = isTextOrImageItem && Boolean(mediaUrl);
   const shouldRenderTextImageBlock = isTextOrImageItem && (shouldRenderTopImage || hasFormattedText);
   const textImageBlockPadding = hasFormattedText ? 'px-6 py-8' : 'px-6 pt-6 pb-4';
+  const unlockedContent = isSongLayout ? (
+    <div className="space-y-6">
+      <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
+        <div className="aspect-video w-full bg-mil-dark">
+          {embedUrl ? (
+            <iframe
+              src={embedUrl}
+              title={item.title}
+              className="w-full h-full border-0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            ></iframe>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
+              Link de vídeo indisponível.
+            </div>
+          )}
+        </div>
+      </div>
+
+      <section className="mx-auto w-full max-w-3xl rounded-2xl border border-mil-medium/80 bg-gradient-to-b from-mil-medium/60 via-mil-dark to-mil-dark px-6 py-8">
+        <header className="text-center mb-8">
+          <h1 className="text-3xl font-heading font-bold italic text-mil-light leading-tight">
+            {item.title}
+          </h1>
+          <p className="mt-3 text-[11px] tracking-[0.2em] uppercase text-mil-neutral font-semibold">
+            {songMeta}
+          </p>
+          {item.description && (
+            <p className="mt-4 text-sm text-mil-neutral max-w-xl mx-auto">
+              {item.description}
+            </p>
+          )}
+        </header>
+
+        {hasLyrics ? (
+          <div className="space-y-8">
+            {lyricsStanzas.map((stanza, stanzaIndex) => (
+              <div key={stanzaIndex} className="space-y-2 text-center">
+                {stanza.map((line, lineIndex) => (
+                  <p
+                    key={`${stanzaIndex}-${lineIndex}`}
+                    className="font-sans italic font-medium text-base md:text-lg leading-relaxed text-mil-light/95"
+                  >
+                    {line}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-center italic text-mil-neutral">
+            Letra nao disponivel.
+          </p>
+        )}
+      </section>
+    </div>
+  ) : (
+    <>
+      <div>
+        <div className="inline-block px-2 py-1 bg-mil-medium text-mil-light text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
+          {getItemTypeLabel(item.type)}
+        </div>
+        <h1 className="text-2xl font-heading font-bold text-mil-light leading-tight mb-2">{item.title}</h1>
+        {item.description && (
+          <p className="text-mil-neutral text-base">{item.description}</p>
+        )}
+      </div>
+
+      {item.type === 'pdf' ? (
+        <>
+          {hasFormattedText && (
+            <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
+              <div
+                className="
+                  text-mil-light/95
+                  [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
+                  [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
+                  [&_strong]:text-mil-light [&_strong]:font-bold
+                  [&_b]:text-mil-light [&_b]:font-bold
+                  [&_em]:italic [&_i]:italic
+                  [&_s]:line-through [&_strike]:line-through
+                  [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
+                  [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
+                  [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
+                "
+                dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
+              />
+            </section>
+          )}
+
+          {pdfExternalUrl && (
+            <a
+              href={pdfExternalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 text-mil-gold hover:text-mil-light transition font-medium"
+            >
+              <ExternalLink size={18} />
+              Ver documento oficial
+            </a>
+          )}
+
+          {pdfStorageUrl && (
+            <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
+              <div className="p-6 flex flex-col items-center justify-center text-center">
+                <FileText size={48} className="text-mil-red mb-4" />
+                <h3 className="font-medium text-mil-black mb-1">Documento PDF</h3>
+                <p className="text-sm text-mil-black/70 mb-4">{item.title}</p>
+                <a
+                  href={pdfStorageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 bg-mil-medium text-mil-light px-5 py-2.5 rounded-xl font-medium hover:bg-mil-dark transition"
+                >
+                  Abrir PDF <ExternalLink size={18} />
+                </a>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {item.type === 'video' && (
+            <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
+              <div className="aspect-video w-full bg-mil-dark">
+                {embedUrl ? (
+                  <iframe
+                    src={embedUrl}
+                    title={item.title}
+                    className="w-full h-full border-0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
+                    Link de vídeo indisponível.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {item.type === 'audio' && mediaUrl && (
+            <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
+              <div className="p-6">
+                <audio controls className="w-full" src={mediaUrl}>
+                  Seu navegador não suporta o elemento de áudio.
+                </audio>
+              </div>
+            </div>
+          )}
+
+          {shouldRenderTextImageBlock && (
+            <section className={`mx-auto w-full max-w-3xl rounded-2xl bg-mil-medium/70 ${textImageBlockPadding}`}>
+              {shouldRenderTopImage && (
+                <div className={`overflow-hidden rounded-xl border border-mil-medium/80 bg-mil-dark/30 ${hasFormattedText ? 'mb-6' : ''}`}>
+                  <img
+                    src={mediaUrl}
+                    alt={item.title}
+                    className="w-full h-auto max-h-[420px] object-cover object-center"
+                    loading="lazy"
+                  />
+                </div>
+              )}
+
+              {hasFormattedText && (
+                <div
+                  className="
+                    text-mil-light/95
+                    [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
+                    [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
+                    [&_strong]:text-mil-light [&_strong]:font-bold
+                    [&_b]:text-mil-light [&_b]:font-bold
+                    [&_em]:italic [&_i]:italic
+                    [&_s]:line-through [&_strike]:line-through
+                    [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
+                    [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
+                    [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
+                  "
+                  dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
+                />
+              )}
+            </section>
+          )}
+
+          {!isTextOrImageItem && hasFormattedText && (
+            <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
+              <div
+                className="
+                  text-mil-light/95
+                  [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
+                  [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
+                  [&_strong]:text-mil-light [&_strong]:font-bold
+                  [&_b]:text-mil-light [&_b]:font-bold
+                  [&_em]:italic [&_i]:italic
+                  [&_s]:line-through [&_strike]:line-through
+                  [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
+                  [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
+                  [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
+                "
+                dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
+              />
+            </section>
+          )}
+        </>
+      )}
+    </>
+  );
 
   return (
     <div className="flex flex-col min-h-full bg-mil-dark text-mil-light">
@@ -201,214 +463,26 @@ export default function ItemDetail() {
       </header>
 
       <div className="p-4 space-y-6 pb-8">
-        {isSongLayout ? (
-        <div className="space-y-6">
-          <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
-            <div className="aspect-video w-full bg-mil-dark">
-              {embedUrl ? (
-                <iframe
-                  src={embedUrl}
-                  title={item.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
-                  Link de vídeo indisponível.
-                </div>
-              )}
-            </div>
-          </div>
-
-          <section className="mx-auto w-full max-w-3xl rounded-2xl border border-mil-medium/80 bg-gradient-to-b from-mil-medium/60 via-mil-dark to-mil-dark px-6 py-8">
-            <header className="text-center mb-8">
-              <h1 className="text-3xl font-heading font-bold italic text-mil-light leading-tight">
-                {item.title}
-              </h1>
-              <p className="mt-3 text-[11px] tracking-[0.2em] uppercase text-mil-neutral font-semibold">
-                {songMeta}
-              </p>
-              {item.description && (
-                <p className="mt-4 text-sm text-mil-neutral max-w-xl mx-auto">
-                  {item.description}
-                </p>
-              )}
-            </header>
-
-            {hasLyrics ? (
-              <div className="space-y-8">
-                {lyricsStanzas.map((stanza, stanzaIndex) => (
-                  <div key={stanzaIndex} className="space-y-2 text-center">
-                    {stanza.map((line, lineIndex) => (
-                      <p
-                        key={`${stanzaIndex}-${lineIndex}`}
-                        className="font-sans italic font-medium text-base md:text-lg leading-relaxed text-mil-light/95"
-                      >
-                        {line}
-                      </p>
-                    ))}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-center italic text-mil-neutral">
-                Letra nao disponivel.
-              </p>
-            )}
+        {!isContentUnlocked ? (
+          <section className="rounded-xl border border-[#E5C543]/35 bg-[#611515] px-5 py-6">
+            <p className="text-xs uppercase tracking-[0.2em] text-[#E5C543] font-semibold">
+              Conteudo bloqueado
+            </p>
+            <h2 className="mt-2 text-lg font-heading font-bold text-white">{item.title}</h2>
+            <p className="mt-2 text-sm text-white/90">
+              Assista ao anuncio para liberar esta categoria por 10 minutos.
+            </p>
+            <button
+              type="button"
+              onClick={handleUnlockContent}
+              disabled={isGateChecking}
+              className="mt-4 w-full rounded-xl bg-[#A21111] px-4 py-3 text-sm font-semibold text-[#FFD700] hover:bg-[#E3BE00] hover:text-[#611515] disabled:cursor-not-allowed disabled:opacity-60 transition-colors"
+            >
+              {isGateChecking ? 'Validando liberacao...' : 'Liberar conteudo'}
+            </button>
           </section>
-        </div>
         ) : (
-        <>
-          <div>
-            <div className="inline-block px-2 py-1 bg-mil-medium text-mil-light text-xs font-semibold rounded-md uppercase tracking-wide mb-3">
-              {getItemTypeLabel(item.type)}
-            </div>
-            <h1 className="text-2xl font-heading font-bold text-mil-light leading-tight mb-2">{item.title}</h1>
-            {item.description && (
-              <p className="text-mil-neutral text-base">{item.description}</p>
-            )}
-          </div>
-
-          {item.type === 'pdf' ? (
-            <>
-              {hasFormattedText && (
-                <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
-                  <div
-                    className="
-                      text-mil-light/95
-                      [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
-                      [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
-                      [&_strong]:text-mil-light [&_strong]:font-bold
-                      [&_b]:text-mil-light [&_b]:font-bold
-                      [&_em]:italic [&_i]:italic
-                      [&_s]:line-through [&_strike]:line-through
-                      [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
-                      [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
-                      [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
-                    "
-                    dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
-                  />
-                </section>
-              )}
-
-              {pdfExternalUrl && (
-                <a
-                  href={pdfExternalUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-mil-gold hover:text-mil-light transition font-medium"
-                >
-                  <ExternalLink size={18} />
-                  Ver documento oficial
-                </a>
-              )}
-
-              {pdfStorageUrl && (
-                <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
-                  <div className="p-6 flex flex-col items-center justify-center text-center">
-                    <FileText size={48} className="text-mil-red mb-4" />
-                    <h3 className="font-medium text-mil-black mb-1">Documento PDF</h3>
-                    <p className="text-sm text-mil-black/70 mb-4">{item.title}</p>
-                    <a
-                      href={pdfStorageUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 bg-mil-medium text-mil-light px-5 py-2.5 rounded-xl font-medium hover:bg-mil-dark transition"
-                    >
-                      Abrir PDF <ExternalLink size={18} />
-                    </a>
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {item.type === 'video' && (
-                <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">
-                  <div className="aspect-video w-full bg-mil-dark">
-                    {embedUrl ? (
-                      <iframe
-                        src={embedUrl}
-                        title={item.title}
-                        className="w-full h-full border-0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                      ></iframe>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-mil-neutral px-4 text-center">
-                        Link de vídeo indisponível.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {item.type === 'audio' && mediaUrl && (
-                <div className="bg-mil-light rounded-2xl shadow-sm border border-mil-medium overflow-hidden text-mil-black">
-                  <div className="p-6">
-                    <audio controls className="w-full" src={mediaUrl}>
-                      Seu navegador não suporta o elemento de áudio.
-                    </audio>
-                  </div>
-                </div>
-              )}
-
-              {shouldRenderTextImageBlock && (
-                <section className={`mx-auto w-full max-w-3xl rounded-2xl bg-mil-medium/70 ${textImageBlockPadding}`}>
-                  {shouldRenderTopImage && (
-                    <div className={`overflow-hidden rounded-xl border border-mil-medium/80 bg-mil-dark/30 ${hasFormattedText ? 'mb-6' : ''}`}>
-                      <img
-                        src={mediaUrl}
-                        alt={item.title}
-                        className="w-full h-auto max-h-[420px] object-cover object-center"
-                        loading="lazy"
-                      />
-                    </div>
-                  )}
-
-                  {hasFormattedText && (
-                    <div
-                      className="
-                        text-mil-light/95
-                        [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
-                        [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
-                        [&_strong]:text-mil-light [&_strong]:font-bold
-                        [&_b]:text-mil-light [&_b]:font-bold
-                        [&_em]:italic [&_i]:italic
-                        [&_s]:line-through [&_strike]:line-through
-                        [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
-                        [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
-                        [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
-                      "
-                      dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
-                    />
-                  )}
-                </section>
-              )}
-
-              {!isTextOrImageItem && hasFormattedText && (
-                <section className="mx-auto w-full max-w-3xl rounded-2xl px-6 py-8 bg-gradient-to-b from-mil-medium/55 via-mil-dark to-mil-dark">
-                  <div
-                    className="
-                      text-mil-light/95
-                      [&_p]:text-[1.02rem] [&_p]:leading-8 [&_p]:italic [&_p]:text-justify [&_p]:mb-4
-                      [&_h2]:text-mil-red [&_h2]:font-heading [&_h2]:font-bold [&_h2]:text-center [&_h2]:text-2xl [&_h2]:italic [&_h2]:mt-8 [&_h2]:mb-3 [&_h2:first-child]:mt-0
-                      [&_strong]:text-mil-light [&_strong]:font-bold
-                      [&_b]:text-mil-light [&_b]:font-bold
-                      [&_em]:italic [&_i]:italic
-                      [&_s]:line-through [&_strike]:line-through
-                      [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:space-y-2 [&_ul]:my-4
-                      [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:space-y-2 [&_ol]:my-4
-                      [&_li]:text-[1.02rem] [&_li]:leading-8 [&_li]:italic [&_li]:text-justify [&_li]:text-mil-light/95
-                    "
-                    dangerouslySetInnerHTML={{ __html: sanitizedTextBody }}
-                  />
-                </section>
-              )}
-            </>
-          )}
-          </>
+          unlockedContent
         )}
 
         <div className="pt-6 border-t border-mil-medium">

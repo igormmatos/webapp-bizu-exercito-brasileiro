@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { getFavorites, toggleFavorite } from '../lib/favoritesCache';
 import { getItemById } from '../lib/catalogApi';
 import { Item } from '../types';
-import { Heart, FileText, Video, Headphones, Image as ImageIcon, File } from 'lucide-react';
+import { Heart } from 'lucide-react';
 import AudioItemCard from '../components/AudioItemCard';
+import ItemContentCard from '../components/ItemContentCard';
 import { useInlineAudioPlayer } from '../hooks/useInlineAudioPlayer';
 import { getItemAudioUrl } from '../lib/audioUrl';
-import { getItemTypeLabel } from '../lib/itemTypeLabel';
+import { useGate } from '../components/GateProvider';
 
 export default function Favorites() {
   const [favorites, setFavorites] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
   const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
+  const { ensureCategoryUnlocked } = useGate();
 
   useEffect(() => {
     loadFavorites();
@@ -30,21 +31,24 @@ export default function Favorites() {
     setLoading(false);
   };
 
-  const handleToggleFavorite = async (itemId: string) => {
-    const newStatus = await toggleFavorite(itemId);
-    if (!newStatus) {
-      setFavorites((currentValue) => currentValue.filter((favoriteItem) => favoriteItem.id !== itemId));
+  const handleToggleFavorite = async (item: Item) => {
+    const result = await toggleFavorite(item.id, item.category_id);
+    if (result.status === 'removed') {
+      setFavorites((currentValue) => currentValue.filter((favoriteItem) => favoriteItem.id !== item.id));
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'pdf': return <FileText size={20} className="text-mil-red" />;
-      case 'video': return <Video size={20} className="text-mil-blue" />;
-      case 'audio': return <Headphones size={20} className="text-mil-gold" />;
-      case 'image': return <ImageIcon size={20} className="text-mil-gold" />;
-      default: return <File size={20} className="text-mil-neutral" />;
+  const handleToggleAudioPlay = async (item: Item, audioUrl: string) => {
+    if (!audioUrl) return;
+    const isCurrentTrackPlaying = activeId === item.id && isPlaying;
+    if (isCurrentTrackPlaying) {
+      togglePlay(item.id, audioUrl);
+      return;
     }
+
+    const canPlay = await ensureCategoryUnlocked(item.category_id, 'audio');
+    if (!canPlay) return;
+    togglePlay(item.id, audioUrl);
   };
 
   return (
@@ -80,37 +84,23 @@ export default function Favorites() {
                       isPlaying={isItemPlaying}
                       isLooping={isLoopEnabled(item.id)}
                       isFavorite={true}
-                      onTogglePlay={() => togglePlay(item.id, audioUrl)}
+                      onTogglePlay={() => handleToggleAudioPlay(item, audioUrl)}
                       onToggleLoop={() => toggleLoop(item.id)}
-                      onToggleFavorite={() => handleToggleFavorite(item.id)}
+                      onToggleFavorite={() => handleToggleFavorite(item)}
                     />
                   </div>
                 );
               }
 
               return (
-                <Link 
-                  key={item.id} 
-                  to={`/item/${item.id}`}
-                  className="flex items-start min-w-0 overflow-hidden p-3 bg-mil-light rounded-lg shadow-sm border border-mil-medium hover:border-mil-gold transition"
-                >
-                  <div className="mr-3 mt-1 shrink-0">
-                    {getIcon(item.type)}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-sans font-semibold text-mil-black line-clamp-2 leading-snug break-words">
-                      {item.title}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
-                        {getItemTypeLabel(item.type)}
-                      </span>
-                    </div>
-                    {item.description && (
-                      <p className="text-sm text-mil-black/70 line-clamp-2 break-words mt-1">{item.description}</p>
-                    )}
-                  </div>
-                </Link>
+                <div key={item.id}>
+                  <ItemContentCard
+                    item={item}
+                    to={`/item/${item.id}`}
+                    isFavorite={true}
+                    onToggleFavorite={() => handleToggleFavorite(item)}
+                  />
+                </div>
               );
             })}
           </div>

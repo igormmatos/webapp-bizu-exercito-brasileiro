@@ -4,12 +4,18 @@ import { getCategories, fetchCatalog } from '../lib/catalogApi';
 import { getBizuOfTheDay } from '../lib/bizuOfTheDay';
 import { Category, Item } from '../types';
 import { BookOpen, RefreshCw, Search as SearchIcon } from 'lucide-react';
+import ItemContentCard from '../components/ItemContentCard';
+import { getFavorites, toggleFavorite } from '../lib/favoritesCache';
+import { useNotice } from '../components/NoticeProvider';
+import { trackMonetizationEvent } from '../lib/monetization';
 
 export default function Home() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [bizu, setBizu] = useState<Item | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const { showNotice } = useNotice();
 
   useEffect(() => {
     loadData();
@@ -18,10 +24,14 @@ export default function Home() {
   const loadData = async () => {
     setLoading(true);
     try {
-      const cats = await getCategories();
+      const [cats, dayBizu, favoriteList] = await Promise.all([
+        getCategories(),
+        getBizuOfTheDay(),
+        getFavorites(),
+      ]);
       setCategories(cats);
-      const b = await getBizuOfTheDay();
-      setBizu(b);
+      setBizu(dayBizu);
+      setFavoriteIds(new Set(favoriteList));
     } catch (e) {
       console.error(e);
     } finally {
@@ -37,6 +47,31 @@ export default function Home() {
     } finally {
       setSyncing(false);
     }
+  };
+
+  const handleToggleFavorite = async (item: Item) => {
+    const result = await toggleFavorite(item.id, item.category_id);
+    if (result.status === 'limit_reached') {
+      showNotice({
+        variant: 'warning',
+        message: '⚠️ Você atingiu o limite de 3 favoritos por categoria — mantenha apenas os essenciais.',
+      });
+      trackMonetizationEvent('favoritos_limit_reached', {
+        itemId: item.id,
+        categoryId: item.category_id,
+      });
+      return;
+    }
+
+    setFavoriteIds((currentValue) => {
+      const nextValue = new Set(currentValue);
+      if (result.status === 'added') {
+        nextValue.add(item.id);
+      } else {
+        nextValue.delete(item.id);
+      }
+      return nextValue;
+    });
   };
 
   if (loading) {
@@ -69,10 +104,14 @@ export default function Home() {
               <span className="w-1 h-4 bg-mil-gold rounded-full"></span>
               Bizu do Dia
             </h2>
-            <Link to={`/item/${bizu.id}`} className="block bg-mil-medium border border-mil-gold/30 p-4 rounded-lg shadow-sm hover:border-mil-gold transition">
-              <h3 className="font-sans font-semibold text-mil-light text-lg mb-1">{bizu.title}</h3>
-              <p className="text-mil-neutral text-sm line-clamp-2">{bizu.description || 'Toque para ver os detalhes.'}</p>
-            </Link>
+            <ItemContentCard
+              item={bizu}
+              to={`/item/${bizu.id}`}
+              isFavorite={favoriteIds.has(bizu.id)}
+              onToggleFavorite={() => handleToggleFavorite(bizu)}
+              tone="dark"
+              fallbackDescription="Toque para ver os detalhes."
+            />
           </section>
         )}
 
