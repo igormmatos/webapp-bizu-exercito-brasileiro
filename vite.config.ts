@@ -43,6 +43,7 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+        navigateFallbackDenylist: [/^\/ads\.txt$/],
         runtimeCaching: [
           {
             urlPattern: ({url, request}) =>
