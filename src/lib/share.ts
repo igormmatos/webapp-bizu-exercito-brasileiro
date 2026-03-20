@@ -18,7 +18,11 @@ export function buildItemShareUrl(itemId: string): string | null {
   if (typeof window === 'undefined' || !window.location.origin) return null;
   const sharePath = buildItemSharePath(itemId);
   if (!sharePath) return null;
-  return buildAbsoluteUrl(sharePath, window.location.origin);
+
+  const configuredOrigin = import.meta.env.VITE_PUBLIC_APP_URL?.trim();
+  const baseOrigin = configuredOrigin || window.location.origin;
+
+  return buildAbsoluteUrl(sharePath, baseOrigin);
 }
 
 async function copyItemUrl(url: string): Promise<ItemShareResult> {
