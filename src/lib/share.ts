@@ -14,6 +14,10 @@ type ShareItemOptions = {
   title: string;
 };
 
+function buildItemShareMessage(title: string, url: string): string {
+  return `Confira este conteúdo: ${title}\n${url}`;
+}
+
 export function buildItemShareUrl(itemId: string): string | null {
   if (typeof window === 'undefined' || !window.location.origin) return null;
   const sharePath = buildItemSharePath(itemId);
@@ -25,13 +29,13 @@ export function buildItemShareUrl(itemId: string): string | null {
   return buildAbsoluteUrl(sharePath, baseOrigin);
 }
 
-async function copyItemUrl(url: string): Promise<ItemShareResult> {
+async function copyItemMessage(message: string, url: string): Promise<ItemShareResult> {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
     return { status: 'unsupported', url };
   }
 
   try {
-    await navigator.clipboard.writeText(url);
+    await navigator.clipboard.writeText(message);
     return { status: 'copied', url };
   } catch (error) {
     return {
@@ -52,16 +56,15 @@ export async function shareItemLink({ itemId, title }: ShareItemOptions): Promis
     };
   }
 
+  const shareMessage = buildItemShareMessage(title, url);
   const shareData = {
-    title,
-    text: `Veja o conteúdo: ${title}`,
-    url,
+    text: shareMessage,
   };
 
   if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
     try {
       if (typeof navigator.canShare === 'function' && !navigator.canShare(shareData)) {
-        return copyItemUrl(url);
+        return copyItemMessage(shareMessage, url);
       }
 
       await navigator.share(shareData);
@@ -76,7 +79,7 @@ export async function shareItemLink({ itemId, title }: ShareItemOptions): Promis
         };
       }
 
-      const clipboardResult = await copyItemUrl(url);
+      const clipboardResult = await copyItemMessage(shareMessage, url);
       if (clipboardResult.status !== 'error') {
         return clipboardResult;
       }
@@ -90,5 +93,5 @@ export async function shareItemLink({ itemId, title }: ShareItemOptions): Promis
     }
   }
 
-  return copyItemUrl(url);
+  return copyItemMessage(shareMessage, url);
 }
