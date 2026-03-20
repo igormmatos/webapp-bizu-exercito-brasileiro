@@ -32,9 +32,9 @@ export default function AppUpdateBanner({ blocked = false }: AppUpdateBannerProp
         </div>
 
         <div className="min-w-0 flex-1">
-          <h2 className="text-sm font-bold text-mil-light">Nova versao disponivel</h2>
+          <h2 className="text-sm font-bold text-mil-light">Nova versão disponível</h2>
           <p className="mt-1 text-sm leading-6 text-mil-light/85">
-            Atualize agora para carregar a versao mais recente do app.
+            Atualize agora para carregar a versão mais recente do app.
           </p>
 
           <div className="mt-3 flex flex-wrap gap-2">
@@ -66,7 +66,7 @@ export default function AppUpdateBanner({ blocked = false }: AppUpdateBannerProp
           onClick={dismissPwaUpdateBanner}
           disabled={updateState.updateInProgress}
           className="rounded-full p-1.5 text-mil-neutral hover:bg-mil-medium hover:text-mil-light disabled:opacity-70 transition"
-          aria-label="Fechar aviso de atualizacao"
+          aria-label="Fechar aviso de atualização"
         >
           <X size={16} />
         </button>

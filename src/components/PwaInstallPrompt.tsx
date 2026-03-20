@@ -186,7 +186,7 @@ export default function PwaInstallPrompt({ blocked = false }: PwaInstallPromptPr
         <img src={APP_ICON_URL} alt="Ícone do app" className="h-14 w-14 mx-auto rounded-xl mb-4" />
 
         <h2 className="text-center text-2xl font-heading font-bold text-mil-red">
-          Adicione o App na tela inicial
+          Adicione o app à tela inicial
         </h2>
         <p className="mt-2 text-center text-sm text-mil-light/90">
           Fica mais rápido de acessar, direto do seu celular.

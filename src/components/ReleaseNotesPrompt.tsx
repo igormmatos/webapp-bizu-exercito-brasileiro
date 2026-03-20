@@ -70,7 +70,7 @@ export default function ReleaseNotesPrompt({
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Novidades da versao"
+        aria-label="Novidades da versão"
         className="w-full max-w-md rounded-2xl border border-mil-medium bg-mil-dark px-5 py-6 shadow-2xl"
       >
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-mil-gold/15 text-mil-gold">
@@ -81,7 +81,7 @@ export default function ReleaseNotesPrompt({
           {releaseNotes.title}
         </h2>
         <p className="mt-2 text-center text-sm text-mil-light/90">
-          Versao {__APP_VERSION__}
+          Versão {__APP_VERSION__}
           {releaseNotes.publishedAt ? ` · ${releaseNotes.publishedAt}` : ''}
         </p>
 

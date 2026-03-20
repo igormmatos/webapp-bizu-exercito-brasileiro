@@ -22,7 +22,7 @@ export default function Layout() {
 
   const syncMessage = syncState.isFirstSync
     ? 'Sincronizando dados iniciais...'
-    : 'Sincronizando atualizacoes...';
+    : 'Sincronizando atualizações...';
 
   return (
     <div className="flex flex-col h-screen bg-mil-dark text-mil-light font-sans">

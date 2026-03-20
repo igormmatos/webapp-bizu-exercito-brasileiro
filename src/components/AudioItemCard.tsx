@@ -77,7 +77,7 @@ export default function AudioItemCard({
             )}
             <div className="flex items-center gap-2 mt-1">
               <span className="text-[10px] font-medium px-1.5 py-0.5 bg-mil-neutral/20 text-mil-black rounded uppercase tracking-wider">
-                AUDIO
+                ÁUDIO
               </span>
             </div>
             {hasDescription && (

@@ -145,7 +145,7 @@ export default function ItemDetail() {
   const getSongMeta = (currentItem: Item) => {
     const firstTag = currentItem.tags?.find((tag) => tag.trim().length > 0);
     const mode = firstTag ? firstTag : currentItem.type;
-    return `CANCAO MILITAR · ${mode}`.toUpperCase();
+    return `CANÇÃO MILITAR · ${mode}`.toUpperCase();
   };
 
   const getYouTubeEmbedUrl = (url?: string) => {

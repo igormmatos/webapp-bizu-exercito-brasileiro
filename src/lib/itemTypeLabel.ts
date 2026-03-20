@@ -2,10 +2,10 @@ import { Item } from '../types';
 
 const ITEM_TYPE_LABELS: Record<Item['type'], string> = {
   pdf: 'PDF',
-  audio: 'AUDIO',
-  video: 'VIDEO',
+  audio: 'ÁUDIO',
+  video: 'VÍDEO',
   text: 'TEXTO',
-  image: 'IMAGEM'
+  image: 'IMAGEM',
 };
 
 export function getItemTypeLabel(type: Item['type'] | string): string {

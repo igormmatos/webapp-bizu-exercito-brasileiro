@@ -10,12 +10,12 @@ const RELEASE_NOTES_STORAGE_KEY = 'manual_de_bolso_last_seen_version_v1';
 
 export const RELEASE_NOTES: ReleaseNotesCatalog = {
   '1.0.0': {
-    title: 'Novidades desta versao',
+    title: 'Novidades desta versão',
     publishedAt: '2026-03-20',
     items: [
-      'Compartilhamento de conteudos com link direto para cada item.',
-      'Preview do conteudo ao compartilhar em apps como o WhatsApp.',
-      'Melhorias na instalacao e atualizacao do app em modo PWA.',
+      'Compartilhamento de conteúdos com link direto para cada item.',
+      'Melhorias na instalação e atualização do app em modo PWA.',
+      'Correções de texto e ajustes na navegação do app.',
     ],
   },
 };
