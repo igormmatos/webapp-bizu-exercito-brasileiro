@@ -7,6 +7,7 @@ const CACHE_KEYS = {
   ITEMS: 'catalog_items',
   LAST_SYNC: 'catalog_last_sync'
 };
+const PINNED_BUGLE_CALL_ITEM_ID = '0d9b66ff-eea6-421e-8e7b-be36a1fb254e';
 
 let legacyLetterRefreshAttempted = false;
 
@@ -176,5 +177,18 @@ export async function getItemById(id: string): Promise<Item | undefined> {
 
 export async function getItemsByCategory(categoryId: string): Promise<Item[]> {
   const items = await getItems();
-  return items.filter(item => item.category_id === categoryId);
+  return items
+    .filter(item => item.category_id === categoryId)
+    .map((item, index) => ({ item, index }))
+    .sort((left, right) => {
+      const leftPinned = left.item.id === PINNED_BUGLE_CALL_ITEM_ID ? 1 : 0;
+      const rightPinned = right.item.id === PINNED_BUGLE_CALL_ITEM_ID ? 1 : 0;
+
+      if (leftPinned !== rightPinned) {
+        return rightPinned - leftPinned;
+      }
+
+      return left.index - right.index;
+    })
+    .map(({ item }) => item);
 }

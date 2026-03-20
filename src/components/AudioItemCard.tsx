@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Headphones, Heart, Pause, Play, Repeat } from 'lucide-react';
 import { Item } from '../types';
 
@@ -6,8 +6,13 @@ type AudioItemCardProps = {
   item: Item;
   canPlay: boolean;
   isPlaying: boolean;
+  isLoading: boolean;
+  showProgress: boolean;
   isLooping: boolean;
   isFavorite: boolean;
+  currentTime: number;
+  duration: number;
+  onSeek: (fraction: number) => void;
   onTogglePlay: () => void;
   onToggleLoop: () => void;
   onToggleFavorite: () => void;
@@ -17,15 +22,31 @@ export default function AudioItemCard({
   item,
   canPlay,
   isPlaying,
+  isLoading,
+  showProgress,
   isLooping,
   isFavorite,
+  currentTime,
+  duration,
+  onSeek,
   onTogglePlay,
   onToggleLoop,
   onToggleFavorite,
 }: AudioItemCardProps) {
   const [isTitleExpanded, setIsTitleExpanded] = useState(false);
+  const progressBarRef = useRef<HTMLDivElement | null>(null);
   const hasDescription = Boolean(item.description && item.description.trim().length > 0);
   const shouldShowTitleToggle = item.title.trim().length > 70;
+  const hasDuration = Number.isFinite(duration) && duration > 0;
+  const progressPercent = hasDuration ? Math.min((currentTime / duration) * 100, 100) : 0;
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+    const wholeSeconds = Math.floor(seconds);
+    const minutes = Math.floor(wholeSeconds / 60);
+    const remainingSeconds = wholeSeconds % 60;
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   const handleCardClick = () => {
     if (!canPlay) return;
@@ -38,6 +59,38 @@ export default function AudioItemCard({
       event.preventDefault();
       onTogglePlay();
     }
+  };
+
+  const updateSeekPosition = (clientX: number) => {
+    if (!progressBarRef.current || !hasDuration || isLoading) return;
+
+    const rect = progressBarRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
+
+    const fraction = (clientX - rect.left) / rect.width;
+    onSeek(fraction);
+  };
+
+  const handleProgressPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (!hasDuration || isLoading) return;
+
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    updateSeekPosition(event.clientX);
+  };
+
+  const handleProgressPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+    updateSeekPosition(event.clientX);
+  };
+
+  const handleProgressPointerUp = (event: PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    updateSeekPosition(event.clientX);
   };
 
   return (
@@ -135,6 +188,57 @@ export default function AudioItemCard({
           </button>
         </div>
       </div>
+
+      {showProgress && (
+        <div className="mt-4 border-t border-mil-medium/80 pt-3">
+          {isLoading ? (
+            <div className="flex items-center justify-between gap-3 text-xs font-medium text-mil-black/70">
+              <span>Carregando...</span>
+              <span className="h-1.5 w-20 overflow-hidden rounded-full bg-mil-neutral/20">
+                <span className="block h-full w-1/2 animate-pulse rounded-full bg-mil-gold/80" />
+              </span>
+            </div>
+          ) : hasDuration ? (
+            <div className="space-y-2">
+              <div
+                ref={progressBarRef}
+                role="slider"
+                aria-label="Ajustar posição do áudio"
+                aria-valuemin={0}
+                aria-valuemax={Math.max(duration, 0)}
+                aria-valuenow={Math.min(currentTime, duration)}
+                tabIndex={0}
+                onClick={(event) => event.stopPropagation()}
+                onPointerDown={handleProgressPointerDown}
+                onPointerMove={handleProgressPointerMove}
+                onPointerUp={handleProgressPointerUp}
+                onPointerCancel={handleProgressPointerUp}
+                className="relative h-4 w-full cursor-pointer touch-none"
+              >
+                <div className="absolute inset-x-0 top-1/2 h-1.5 -translate-y-1/2 overflow-hidden rounded-full bg-mil-neutral/20">
+                  <div
+                    className="h-full rounded-full bg-mil-gold transition-[width] duration-200 ease-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <div
+                  className="absolute top-1/2 h-3.5 w-3.5 -translate-y-1/2 rounded-full border border-mil-dark/20 bg-mil-gold shadow-sm transition-[left] duration-200 ease-out"
+                  style={{ left: `calc(${progressPercent}% - 0.4375rem)` }}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] font-medium text-mil-black/70">
+                <span>{formatTime(currentTime)}</span>
+                <span>{formatTime(duration)}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between text-[11px] font-medium text-mil-black/60">
+              <span>Preparando áudio...</span>
+              <span>0:00</span>
+            </div>
+          )}
+        </div>
+      )}
     </article>
   );
 }

@@ -12,7 +12,8 @@ import { getItemTypeLabel } from '../lib/itemTypeLabel';
 export default function Favorites() {
   const [favorites, setFavorites] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
+  const { activeId, isPlaying, isLoading, currentTime, duration, isLoopEnabled, seekToFraction, toggleLoop, togglePlay } =
+    useInlineAudioPlayer();
 
   useEffect(() => {
     loadFavorites();
@@ -71,6 +72,7 @@ export default function Favorites() {
             {favorites.map(item => {
               if (item.type === 'audio') {
                 const audioUrl = getItemAudioUrl(item);
+                const isActiveItem = activeId === item.id;
                 const isItemPlaying = activeId === item.id && isPlaying;
                 return (
                   <div key={item.id}>
@@ -78,8 +80,13 @@ export default function Favorites() {
                       item={item}
                       canPlay={Boolean(audioUrl)}
                       isPlaying={isItemPlaying}
+                      isLoading={isActiveItem && isLoading}
+                      showProgress={isActiveItem}
                       isLooping={isLoopEnabled(item.id)}
                       isFavorite={true}
+                      currentTime={isActiveItem ? currentTime : 0}
+                      duration={isActiveItem ? duration : 0}
+                      onSeek={seekToFraction}
                       onTogglePlay={() => togglePlay(item.id, audioUrl)}
                       onToggleLoop={() => toggleLoop(item.id)}
                       onToggleFavorite={() => handleToggleFavorite(item.id)}

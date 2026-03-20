@@ -16,7 +16,8 @@ export default function CategoryPage() {
   const [category, setCategory] = useState<Category | null>(null);
   const [loading, setLoading] = useState(true);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
+  const { activeId, isPlaying, isLoading, currentTime, duration, isLoopEnabled, seekToFraction, toggleLoop, togglePlay } =
+    useInlineAudioPlayer();
 
   useEffect(() => {
     if (id) {
@@ -91,6 +92,7 @@ export default function CategoryPage() {
             {items.map(item => {
               if (item.type === 'audio') {
                 const audioUrl = getItemAudioUrl(item);
+                const isActiveItem = activeId === item.id;
                 const isItemPlaying = activeId === item.id && isPlaying;
                 return (
                   <div key={item.id}>
@@ -98,8 +100,13 @@ export default function CategoryPage() {
                       item={item}
                       canPlay={Boolean(audioUrl)}
                       isPlaying={isItemPlaying}
+                      isLoading={isActiveItem && isLoading}
+                      showProgress={isActiveItem}
                       isLooping={isLoopEnabled(item.id)}
                       isFavorite={favoriteIds.has(item.id)}
+                      currentTime={isActiveItem ? currentTime : 0}
+                      duration={isActiveItem ? duration : 0}
+                      onSeek={seekToFraction}
                       onTogglePlay={() => togglePlay(item.id, audioUrl)}
                       onToggleLoop={() => toggleLoop(item.id)}
                       onToggleFavorite={() => handleToggleFavorite(item.id)}

@@ -13,9 +13,9 @@ export const RELEASE_NOTES: ReleaseNotesCatalog = {
     title: 'Novidades desta versão',
     publishedAt: '2026-03-20',
     items: [
-      'Compartilhamento de conteúdos com link direto para cada item.',
-      'Melhorias na instalação e atualização do app em modo PWA.',
-      'Correções de texto e ajustes na navegação do app.',
+      'Melhorias no player de áudio com barra de progresso e ajuste manual de posição.',
+      'Indicador de carregamento durante a preparação dos áudios.',
+      'Ajustes na ordenação de toques de corneta para destacar o item principal da categoria.',
     ],
   },
 };

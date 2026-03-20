@@ -15,7 +15,8 @@ export default function Search() {
   const [results, setResults] = useState<Item[]>([]);
   const [loading, setLoading] = useState(false);
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
-  const { activeId, isPlaying, isLoopEnabled, toggleLoop, togglePlay } = useInlineAudioPlayer();
+  const { activeId, isPlaying, isLoading, currentTime, duration, isLoopEnabled, seekToFraction, toggleLoop, togglePlay } =
+    useInlineAudioPlayer();
 
   useEffect(() => {
     getFavorites().then((favoriteList) => {
@@ -87,6 +88,7 @@ export default function Search() {
         {!loading && results.map(item => {
           if (item.type === 'audio') {
             const audioUrl = getItemAudioUrl(item);
+            const isActiveItem = activeId === item.id;
             const isItemPlaying = activeId === item.id && isPlaying;
             return (
               <div key={item.id}>
@@ -94,8 +96,13 @@ export default function Search() {
                   item={item}
                   canPlay={Boolean(audioUrl)}
                   isPlaying={isItemPlaying}
+                  isLoading={isActiveItem && isLoading}
+                  showProgress={isActiveItem}
                   isLooping={isLoopEnabled(item.id)}
                   isFavorite={favoriteIds.has(item.id)}
+                  currentTime={isActiveItem ? currentTime : 0}
+                  duration={isActiveItem ? duration : 0}
+                  onSeek={seekToFraction}
                   onTogglePlay={() => togglePlay(item.id, audioUrl)}
                   onToggleLoop={() => toggleLoop(item.id)}
                   onToggleFavorite={() => handleToggleFavorite(item.id)}
