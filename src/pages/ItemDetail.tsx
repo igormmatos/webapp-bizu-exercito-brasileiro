@@ -3,10 +3,16 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { getItemById } from '../lib/catalogApi';
 import { isFavorite, toggleFavorite } from '../lib/favoritesCache';
 import { Item } from '../types';
-import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import DOMPurify from 'dompurify';
 import { getItemTypeLabel } from '../lib/itemTypeLabel';
+import { shareItemLink } from '../lib/share';
+
+type ShareFeedback = {
+  tone: 'success' | 'error';
+  message: string;
+};
 
 export default function ItemDetail() {
   const { id } = useParams<{ id: string }>();
@@ -14,12 +20,23 @@ export default function ItemDetail() {
   const [item, setItem] = useState<Item | null>(null);
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
+  const [shareFeedback, setShareFeedback] = useState<ShareFeedback | null>(null);
 
   useEffect(() => {
     if (id) {
       loadData(id);
     }
   }, [id]);
+
+  useEffect(() => {
+    if (!shareFeedback) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setShareFeedback(null);
+    }, 3200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [shareFeedback]);
 
   const loadData = async (itemId: string) => {
     setLoading(true);
@@ -36,6 +53,52 @@ export default function ItemDetail() {
     if (!id) return;
     const newStatus = await toggleFavorite(id);
     setIsFav(newStatus);
+  };
+
+  const handleShare = async () => {
+    if (!item) return;
+
+    const result = await shareItemLink({
+      itemId: item.id,
+      title: item.title,
+    });
+
+    if (result.status === 'shared') {
+      setShareFeedback({
+        tone: 'success',
+        message: 'Compartilhamento aberto com o link deste conteudo.',
+      });
+      return;
+    }
+
+    if (result.status === 'copied') {
+      setShareFeedback({
+        tone: 'success',
+        message: 'Link copiado para a area de transferencia.',
+      });
+      return;
+    }
+
+    if (result.status === 'unsupported') {
+      setShareFeedback({
+        tone: 'error',
+        message: 'Este dispositivo nao suporta compartilhamento nem copia de link.',
+      });
+      return;
+    }
+
+    if (result.reason === 'cancelled') {
+      setShareFeedback(null);
+      return;
+    }
+
+    setShareFeedback({
+      tone: 'error',
+      message:
+        result.reason === 'invalid-id'
+          ? 'Nao foi possivel gerar um link valido para este conteudo.'
+          : 'Nao foi possivel compartilhar este conteudo agora.',
+    });
   };
 
   const decodeHtmlEntities = (value: string) => {
@@ -186,21 +249,44 @@ export default function ItemDetail() {
           >
             <ArrowLeft size={24} />
           </button>
-          <button
-            onClick={handleToggleFavorite}
-            className="p-2 -mr-2 rounded-full hover:bg-mil-medium transition"
-            aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
-          >
-            <Heart
-              size={24}
-              className={isFav ? 'text-mil-red' : 'text-mil-neutral'}
-              fill={isFav ? 'currentColor' : 'none'}
-            />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleShare}
+              className="p-2 rounded-full hover:bg-mil-medium transition text-mil-light"
+              aria-label="Compartilhar conteudo"
+            >
+              <Share2 size={22} />
+            </button>
+            <button
+              onClick={handleToggleFavorite}
+              className="p-2 -mr-2 rounded-full hover:bg-mil-medium transition"
+              aria-label={isFav ? 'Remover dos favoritos' : 'Adicionar aos favoritos'}
+            >
+              <Heart
+                size={24}
+                className={isFav ? 'text-mil-red' : 'text-mil-neutral'}
+                fill={isFav ? 'currentColor' : 'none'}
+              />
+            </button>
+          </div>
         </div>
       </header>
 
       <div className="p-4 space-y-6 pb-8">
+        {shareFeedback && (
+          <div
+            role="status"
+            aria-live="polite"
+            className={`rounded-xl border px-4 py-3 text-sm ${
+              shareFeedback.tone === 'success'
+                ? 'border-mil-gold/40 bg-mil-gold/10 text-mil-light'
+                : 'border-mil-red/40 bg-mil-red/10 text-mil-light'
+            }`}
+          >
+            {shareFeedback.message}
+          </div>
+        )}
+
         {isSongLayout ? (
         <div className="space-y-6">
           <div className="rounded-xl overflow-hidden border border-mil-medium bg-mil-dark">

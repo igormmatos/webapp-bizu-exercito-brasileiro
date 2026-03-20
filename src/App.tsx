@@ -8,6 +8,7 @@ const Favorites = lazy(() => import('./pages/Favorites'));
 const Suggestion = lazy(() => import('./pages/Suggestion'));
 const CategoryPage = lazy(() => import('./pages/Category'));
 const ItemDetail = lazy(() => import('./pages/ItemDetail'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 export default function App() {
   return (
@@ -21,6 +22,7 @@ export default function App() {
             <Route path="suggestion" element={<Suggestion />} />
             <Route path="category/:id" element={<CategoryPage />} />
             <Route path="item/:id" element={<ItemDetail />} />
+            <Route path="*" element={<NotFound />} />
           </Route>
         </Routes>
       </Suspense>
