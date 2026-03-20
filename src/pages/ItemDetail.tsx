@@ -66,7 +66,7 @@ export default function ItemDetail() {
     if (result.status === 'shared') {
       setShareFeedback({
         tone: 'success',
-        message: 'Compartilhamento aberto com o link deste conteudo.',
+        message: 'Compartilhamento aberto com o link deste conteúdo.',
       });
       return;
     }
@@ -74,7 +74,7 @@ export default function ItemDetail() {
     if (result.status === 'copied') {
       setShareFeedback({
         tone: 'success',
-        message: 'Link copiado para a area de transferencia.',
+        message: 'Link copiado para a área de transferência.',
       });
       return;
     }
@@ -82,7 +82,7 @@ export default function ItemDetail() {
     if (result.status === 'unsupported') {
       setShareFeedback({
         tone: 'error',
-        message: 'Este dispositivo nao suporta compartilhamento nem copia de link.',
+        message: 'Este dispositivo não suporta compartilhamento nem cópia de link.',
       });
       return;
     }
@@ -96,8 +96,8 @@ export default function ItemDetail() {
       tone: 'error',
       message:
         result.reason === 'invalid-id'
-          ? 'Nao foi possivel gerar um link valido para este conteudo.'
-          : 'Nao foi possivel compartilhar este conteudo agora.',
+          ? 'Não foi possível gerar um link válido para este conteúdo.'
+          : 'Não foi possível compartilhar este conteúdo agora.',
     });
   };
 
@@ -253,7 +253,7 @@ export default function ItemDetail() {
             <button
               onClick={handleShare}
               className="p-2 rounded-full hover:bg-mil-medium transition text-mil-light"
-              aria-label="Compartilhar conteudo"
+              aria-label="Compartilhar conteúdo"
             >
               <Share2 size={22} />
             </button>
@@ -339,7 +339,7 @@ export default function ItemDetail() {
               </div>
             ) : (
               <p className="text-center italic text-mil-neutral">
-                Letra nao disponivel.
+                Letra não disponível.
               </p>
             )}
           </section>

@@ -54,7 +54,7 @@ export async function shareItemLink({ itemId, title }: ShareItemOptions): Promis
 
   const shareData = {
     title,
-    text: `Confira este conteudo: ${title}`,
+    text: `Veja o conteúdo: ${title}`,
     url,
   };
 
