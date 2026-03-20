@@ -4,14 +4,6 @@
       "handle": "filesystem"
     },
     {
-      "src": "/share/item/?",
-      "dest": "/api/share-item"
-    },
-    {
-      "src": "/share/item/([^/]+)",
-      "dest": "/api/share-item?itemId=$1"
-    },
-    {
       "src": "/(.*)",
       "dest": "/index.html"
     }

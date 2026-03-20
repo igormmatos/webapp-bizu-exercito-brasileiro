@@ -15,7 +15,7 @@ App React + Vite com roteamento SPA (`BrowserRouter`) e integração com Supabas
    `copy .env.example .env.local` (Windows)
    `cp .env.example .env.local` (Linux/macOS)
 3. Preencha no `.env.local`:
-   - `VITE_PUBLIC_APP_URL` (opcional em dev; obrigatório para gerar links públicos corretos em produção)
+   - `VITE_PUBLIC_APP_URL` (opcional em dev; recomendado em produção para gerar links públicos corretos)
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 4. Suba o projeto:
@@ -31,25 +31,6 @@ Sem as variáveis do Supabase, o app inicia em modo limitado (sem quebra de star
    `npm run preview`
 3. Limpar artefatos de build:
    `npm run clean`
-
-## Produção em Node/Hostinger
-
-Para ambientes como Hostinger Node/VPS, o deploy de produção deve servir a SPA e a rota de preview compartilhado no mesmo processo Node.
-
-1. Configure as variáveis de ambiente:
-   - `PUBLIC_APP_URL`
-   - `VITE_PUBLIC_APP_URL`
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-2. Gere o build:
-   `npm run build`
-3. Suba o servidor:
-   `npm start`
-
-O servidor Node atende:
-- assets estáticos de `dist`
-- preview dinâmico em `/share/item/:id`
-- fallback SPA para rotas como `/item/:id`
 
 ## Deploy na Vercel
 
