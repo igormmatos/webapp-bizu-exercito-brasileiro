@@ -9,13 +9,24 @@ export type ItemShareResult = {
   error?: unknown;
 };
 
+export type ItemSharePayload = {
+  title: string;
+  url: string;
+  message: string;
+  whatsappUrl: string;
+};
+
 type ShareItemOptions = {
   itemId: string;
   title: string;
 };
 
 function buildItemShareMessage(title: string, url: string): string {
-  return `Confira este conteúdo: ${title}\n${url}`;
+  return `Confira este conteúdo: ${title}\n\n${url}`;
+}
+
+function buildWhatsAppShareUrl(message: string): string {
+  return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
 
 export function buildItemShareUrl(itemId: string): string | null {
@@ -29,69 +40,82 @@ export function buildItemShareUrl(itemId: string): string | null {
   return buildAbsoluteUrl(sharePath, baseOrigin);
 }
 
-async function copyItemMessage(message: string, url: string): Promise<ItemShareResult> {
+export function buildItemSharePayload({ itemId, title }: ShareItemOptions): ItemSharePayload | null {
+  const url = buildItemShareUrl(itemId);
+  if (!url) return null;
+
+  const message = buildItemShareMessage(title, url);
+  return {
+    title,
+    url,
+    message,
+    whatsappUrl: buildWhatsAppShareUrl(message),
+  };
+}
+
+export function canUseNativeShare(payload: ItemSharePayload): boolean {
+  if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
+    return false;
+  }
+
+  const shareData = { text: payload.message };
+  if (typeof navigator.canShare === 'function') {
+    return navigator.canShare(shareData);
+  }
+
+  return true;
+}
+
+export async function copyItemShareMessage(payload: ItemSharePayload): Promise<ItemShareResult> {
   if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-    return { status: 'unsupported', url };
+    return { status: 'unsupported', url: payload.url };
   }
 
   try {
-    await navigator.clipboard.writeText(message);
-    return { status: 'copied', url };
+    await navigator.clipboard.writeText(payload.message);
+    return { status: 'copied', url: payload.url };
   } catch (error) {
     return {
       status: 'error',
-      url,
+      url: payload.url,
       reason: 'clipboard-failed',
       error,
     };
   }
 }
 
-export async function shareItemLink({ itemId, title }: ShareItemOptions): Promise<ItemShareResult> {
-  const url = buildItemShareUrl(itemId);
-  if (!url) {
-    return {
-      status: 'error',
-      reason: itemId.trim() ? 'missing-origin' : 'invalid-id',
-    };
+export async function shareItemLink(payload: ItemSharePayload): Promise<ItemShareResult> {
+  if (!canUseNativeShare(payload)) {
+    return copyItemShareMessage(payload);
   }
 
-  const shareMessage = buildItemShareMessage(title, url);
   const shareData = {
-    text: shareMessage,
+    text: payload.message,
   };
 
-  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-    try {
-      if (typeof navigator.canShare === 'function' && !navigator.canShare(shareData)) {
-        return copyItemMessage(shareMessage, url);
-      }
-
-      await navigator.share(shareData);
-      return { status: 'shared', url };
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        return {
-          status: 'error',
-          url,
-          reason: 'cancelled',
-          error,
-        };
-      }
-
-      const clipboardResult = await copyItemMessage(shareMessage, url);
-      if (clipboardResult.status !== 'error') {
-        return clipboardResult;
-      }
-
+  try {
+    await navigator.share(shareData);
+    return { status: 'shared', url: payload.url };
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') {
       return {
         status: 'error',
-        url,
-        reason: 'share-failed',
+        url: payload.url,
+        reason: 'cancelled',
         error,
       };
     }
-  }
 
-  return copyItemMessage(shareMessage, url);
+    const clipboardResult = await copyItemShareMessage(payload);
+    if (clipboardResult.status !== 'error') {
+      return clipboardResult;
+    }
+
+    return {
+      status: 'error',
+      url: payload.url,
+      reason: 'share-failed',
+      error,
+    };
+  }
 }

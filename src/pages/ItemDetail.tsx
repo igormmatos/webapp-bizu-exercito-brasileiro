@@ -7,7 +7,13 @@ import { ArrowLeft, Heart, AlertTriangle, ExternalLink, FileText, Share2 } from 
 import { supabase } from '../lib/supabase';
 import DOMPurify from 'dompurify';
 import { getItemTypeLabel } from '../lib/itemTypeLabel';
-import { shareItemLink } from '../lib/share';
+import {
+  buildItemSharePayload,
+  canUseNativeShare,
+  copyItemShareMessage,
+  shareItemLink,
+} from '../lib/share';
+import ShareSheet from '../components/ShareSheet';
 
 type ShareFeedback = {
   tone: 'success' | 'error';
@@ -21,6 +27,7 @@ export default function ItemDetail() {
   const [loading, setLoading] = useState(true);
   const [isFav, setIsFav] = useState(false);
   const [shareFeedback, setShareFeedback] = useState<ShareFeedback | null>(null);
+  const [isShareSheetOpen, setIsShareSheetOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -55,26 +62,49 @@ export default function ItemDetail() {
     setIsFav(newStatus);
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
     if (!item) return;
 
-    const result = await shareItemLink({
+    const payload = buildItemSharePayload({
       itemId: item.id,
       title: item.title,
     });
 
-    if (result.status === 'shared') {
+    if (!payload) {
       setShareFeedback({
-        tone: 'success',
-        message: 'Compartilhamento aberto com o link deste conteúdo.',
+        tone: 'error',
+        message: 'Não foi possível gerar um link válido para este conteúdo.',
       });
       return;
     }
 
+    setIsShareSheetOpen(true);
+  };
+
+  const handleCopyShareMessage = async () => {
+    if (!item) return;
+
+    const payload = buildItemSharePayload({
+      itemId: item.id,
+      title: item.title,
+    });
+
+    if (!payload) {
+      setIsShareSheetOpen(false);
+      setShareFeedback({
+        tone: 'error',
+        message: 'Não foi possível gerar um link válido para este conteúdo.',
+      });
+      return;
+    }
+
+    const result = await copyItemShareMessage(payload);
+    setIsShareSheetOpen(false);
+
     if (result.status === 'copied') {
       setShareFeedback({
         tone: 'success',
-        message: 'Link copiado para a área de transferência.',
+        message: 'Mensagem copiada para a área de transferência.',
       });
       return;
     }
@@ -82,7 +112,57 @@ export default function ItemDetail() {
     if (result.status === 'unsupported') {
       setShareFeedback({
         tone: 'error',
-        message: 'Este dispositivo não suporta compartilhamento nem cópia de link.',
+        message: 'Este dispositivo não suporta cópia de mensagem.',
+      });
+      return;
+    }
+
+    setShareFeedback({
+      tone: 'error',
+      message: 'Não foi possível copiar a mensagem deste conteúdo agora.',
+    });
+  };
+
+  const handleNativeShare = async () => {
+    if (!item) return;
+
+    const payload = buildItemSharePayload({
+      itemId: item.id,
+      title: item.title,
+    });
+
+    if (!payload) {
+      setIsShareSheetOpen(false);
+      setShareFeedback({
+        tone: 'error',
+        message: 'Não foi possível gerar um link válido para este conteúdo.',
+      });
+      return;
+    }
+
+    const result = await shareItemLink(payload);
+    setIsShareSheetOpen(false);
+
+    if (result.status === 'shared') {
+      setShareFeedback({
+        tone: 'success',
+        message: 'Compartilhamento aberto com a mensagem deste conteúdo.',
+      });
+      return;
+    }
+
+    if (result.status === 'copied') {
+      setShareFeedback({
+        tone: 'success',
+        message: 'Mensagem copiada para a área de transferência.',
+      });
+      return;
+    }
+
+    if (result.status === 'unsupported') {
+      setShareFeedback({
+        tone: 'error',
+        message: 'Este dispositivo não suporta compartilhamento nem cópia de mensagem.',
       });
       return;
     }
@@ -237,6 +317,11 @@ export default function ItemDetail() {
   const shouldRenderTopImage = isTextOrImageItem && Boolean(mediaUrl);
   const shouldRenderTextImageBlock = isTextOrImageItem && (shouldRenderTopImage || hasFormattedText);
   const textImageBlockPadding = hasFormattedText ? 'px-6 py-8' : 'px-6 pt-6 pb-4';
+  const sharePayload = buildItemSharePayload({
+    itemId: item.id,
+    title: item.title,
+  });
+  const showNativeShare = sharePayload ? canUseNativeShare(sharePayload) : false;
 
   return (
     <div className="flex flex-col min-h-full bg-mil-dark text-mil-light">
@@ -273,6 +358,19 @@ export default function ItemDetail() {
       </header>
 
       <div className="p-4 space-y-6 pb-8">
+        <ShareSheet
+          isOpen={isShareSheetOpen}
+          payload={sharePayload}
+          showNativeShare={showNativeShare}
+          onClose={() => setIsShareSheetOpen(false)}
+          onCopy={() => {
+            void handleCopyShareMessage();
+          }}
+          onNativeShare={() => {
+            void handleNativeShare();
+          }}
+        />
+
         {shareFeedback && (
           <div
             role="status"
